@@ -14,7 +14,6 @@ import java.util.stream.IntStream
  * @author Bence Cserna (bence@cserna.net)
  */
 fun upperConfidenceBounds(mdp: MDP, horizon: Int, simulator: Simulator): Long {
-    val random = Random()
     var currentState: BeliefState = mdp.startState
 
     fun ucb(μ: Double, t: Int, depth: Int, α: Double): Double {
@@ -22,9 +21,6 @@ fun upperConfidenceBounds(mdp: MDP, horizon: Int, simulator: Simulator): Long {
     }
 
     return IntStream.iterate(0, { i -> i + 1 }).limit(horizon.toLong()).mapToLong {
-        val leftBetaDistribution = BetaDistribution(currentState.alphaLeft.toDouble(), currentState.betaLeft.toDouble())
-        val rightBetaDistribution = BetaDistribution(currentState.alphaRight.toDouble(), currentState.betaRight.toDouble())
-
         val leftQ = ucb(currentState.leftMean(), currentState.leftSum(), currentState.totalSum(), 2.0)
         val rightQ = ucb(currentState.rightMean(), currentState.leftSum(), currentState.totalSum(), 2.0)
 

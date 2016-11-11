@@ -30,6 +30,6 @@ fun thompsonSampling(mdp: MDP, horizon: Int, simulator: Simulator): Long {
 
         currentState = nextState
 
-        return@mapToLong reward.toLong()
+        reward.toLong()
     }.sum()
 }

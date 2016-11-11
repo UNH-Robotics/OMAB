@@ -15,15 +15,14 @@ public data class BeliefState(val alphaLeft: Int, val betaLeft: Int, val alphaRi
     fun leftMean() = alphaLeft.toDouble() / leftSum()
     fun rightMean() = alphaRight.toDouble() / rightSum()
 
-    fun nextState(action: Action, success: Boolean): BeliefState {
-        return when {
-            LEFT == action && success -> BeliefState(alphaLeft + 1, betaLeft, alphaRight, betaRight)
-            LEFT == action && !success -> BeliefState(alphaLeft, betaLeft + 1, alphaRight, betaRight)
-            RIGHT == action && success -> BeliefState(alphaLeft, betaLeft, alphaRight + 1, betaRight)
-            RIGHT == action && !success -> BeliefState(alphaLeft, betaLeft, alphaRight, betaRight + 1)
-            else -> throw RuntimeException("Invalid state!")
-        }
-    }
+    fun nextState(action: Action, success: Boolean) =
+            when {
+                LEFT == action && success -> BeliefState(alphaLeft + 1, betaLeft, alphaRight, betaRight)
+                LEFT == action && !success -> BeliefState(alphaLeft, betaLeft + 1, alphaRight, betaRight)
+                RIGHT == action && success -> BeliefState(alphaLeft, betaLeft, alphaRight + 1, betaRight)
+                RIGHT == action && !success -> BeliefState(alphaLeft, betaLeft, alphaRight, betaRight + 1)
+                else -> throw RuntimeException("Invalid state!")
+            }
 }
 
 enum class Action {

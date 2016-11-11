@@ -1,5 +1,6 @@
 package main.kotlin.edu.unh.cs.ai.omab
 
+import edu.unh.cs.ai.omab.algorithms.expectationMaximization
 import edu.unh.cs.ai.omab.algorithms.thompsonSampling
 import edu.unh.cs.ai.omab.algorithms.upperConfidenceBounds
 import edu.unh.cs.ai.omab.domain.BanditWorld
@@ -13,22 +14,28 @@ import kotlin.system.measureTimeMillis
  */
 
 fun main(args: Array<String>) {
-    System.out.print("OMAB!")
+    println("OMAB!")
 
-    val horizon = 1000
+    val horizon = 100000
 
-    var evaluateAlgorithm = 0.0
+    var averageReward = 0.0
     var executionTime: Long
 
     executionTime = measureTimeMillis {
-        evaluateAlgorithm = evaluateAlgorithm(::upperConfidenceBounds, horizon)
+        averageReward = evaluateAlgorithm(::upperConfidenceBounds, horizon)
     }
-    println("UCB  reward: $evaluateAlgorithm executionTime:$executionTime[ms]")
+    println("UCB  reward: $averageReward executionTime:$executionTime[ms]")
 
     executionTime = measureTimeMillis {
-        evaluateAlgorithm = evaluateAlgorithm(::thompsonSampling, horizon)
+        averageReward = evaluateAlgorithm(::thompsonSampling, horizon)
     }
-    println("Thompson sampling reward: $evaluateAlgorithm executionTime:$executionTime[ms]")
+    println("Thompson sampling reward: $averageReward executionTime:$executionTime[ms]")
+
+    executionTime = measureTimeMillis {
+        averageReward = evaluateAlgorithm(::expectationMaximization, horizon)
+    }
+    println("Expectation maximization reward: $averageReward executionTime:$executionTime[ms]")
+
 
 }
 
@@ -42,7 +49,7 @@ private fun evaluateAlgorithm(algorithm: (MDP, Int, Simulator) -> Long, horizon:
                         .iterate(0.0, { i -> i + 0.04 })
                         .limit(25)
                         .mapToLong { p2 ->
-                            algorithm(MDP(), horizon, BanditWorld(p1 / 100.0, p2 / 100.0))
+                            algorithm(MDP(), horizon, BanditWorld(p1, p2))
                         }.average()
                         .orElseThrow { throw RuntimeException() }
             }
