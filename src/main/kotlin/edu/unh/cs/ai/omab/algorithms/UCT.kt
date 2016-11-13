@@ -1,5 +1,6 @@
 package edu.unh.cs.ai.omab.algorithms
 
+import edu.unh.cs.ai.omab.domain.Action
 import edu.unh.cs.ai.omab.domain.Action.LEFT
 import edu.unh.cs.ai.omab.domain.Action.RIGHT
 import edu.unh.cs.ai.omab.domain.MDP
@@ -9,12 +10,94 @@ import org.apache.commons.math3.distribution.BetaDistribution
 import java.util.stream.IntStream
 import java.util.*
 
-class UCTPlanner(val num_simulations: Int, val horizon: Int) {
+/**
+* @brief 
+* 
+* Can apply UCT on any belief state given the current state and timestep
+*
+* Assumes the Bandit problem with 2 arms and is meant to solve the problem
+* where the expected reward of each arm is unknown and represented as a belief state
+* 
+* @param simulator is the generative simulator that is used to step through the tree
+* @param num_simulations is the amount of simulations to use while building the tree
+* @param horizon is the horizon of the problem
+*/
+class UCTPlanner(val simulator: Simulator, val num_simulations: Int, val horizon: Int) {
 
     /**
-    * @brief The q values associated with the actions in each node of the uct graph
+    * @brief The current time step UCT is planning for
     */
-    data class QValues(var qLeft: Double, var qRight: Double);
+    private var curTime = 0;
+
+    /**
+    * @brief A node in the UCT tree / graph
+    *
+    * Contains the q value of - and amount of times the action has been taken
+    */
+    data class UCTNode(var leftQ: Double, var leftN: Int, var rightQ: Double, var rightN: Int);
+
+    /**
+    * UCT stores a q value for each possible action at each <state,depth> pair. 
+    * Since the counts in the (belief) can only be equal at the same depth,
+    * the beliefstate is always unique for its depth. So we can simply represent 
+    * the q values for the <depth, state> pair by storing it by state.
+    */
+    private var graph: MutableMap<BeliefState, UCTNode> = HashMap()
+    
+    private fun updateUCTNode(node: UCTNode, action: Action, q: Double) {
+        // @TODO: update q values of node (incremental average)
+        if (action == LEFT) {
+            node.leftN++
+        } else if (action == RIGHT) {
+            node.rightN++
+        } else {
+            throw RuntimeException("UCT did not create any Q values associated with the rootState") 
+        }
+    }
+
+    private fun recurTreeSearch(state: BeliefState, depth: Int): Double {
+
+        // base case: reached end up horizon and return
+        if (depth + curTime >= depth) {
+            return 0.0;
+        }
+
+        var uctNode = graph[state]
+
+        // perform random rollouts if reached outside of UCT explored tree
+        if (uctNode == null) {
+            // @TODO: implement rollout
+            return rollout(state, depth+1)
+        }
+
+        // still inside the tree: keep on recurring deeper
+        // @TODO: implement selectActionUCB
+        val action = selectActionUCB(uctNode);
+        val (nextState, reward) = simulator.transition(state, action)
+        val q = reward + recurTreeSearch(nextState, depth+1)
+
+        updateUCTNode(uctNode, action, q)
+        return q
+    }
+
+    /**
+    * @brief Builds the UCT tree from root state assuming timestep 
+    *
+    * @param rootState the root state of the tree
+    *
+    * @return void
+    */
+    private fun buildTree(rootState: BeliefState) {
+        assert(curTime < horizon)
+
+        // start empty
+        graph.clear()
+
+        var count = 0;
+        while (count++ < num_simulations) {
+            recurTreeSearch(rootState, 0)
+        }
+    }
 
     /**
     * @brief Performs the actual tree search and returns the best action
@@ -22,13 +105,21 @@ class UCTPlanner(val num_simulations: Int, val horizon: Int) {
     * @param rootState the starting state
     * @param simulator the simulator to use for steps
     * @param timestep is the current timestep
-    * @param horizon is the maximum depth to plan to
     *
     * @return an action
     */
-    public fun selectAction(rootState: BeliefState, simulator: Simulator, timestep: Int, horizon: Int) = LEFT
+    public fun selectAction(rootState: BeliefState, timestep: Int): Action {
+        curTime = timestep
 
-    private var graph: Map<BeliefState, QValues> = HashMap()
+        buildTree(rootState);
+
+        // @TODO: does this have to be so ugly?
+        val rootQNode = graph[rootState] ?: 
+                        throw RuntimeException("UCT did not create any Q values associated with the rootState") 
+
+        return if (rootQNode.leftQ > rootQNode.rightQ) LEFT else RIGHT;
+    }
+
 }
 
 /**
@@ -43,15 +134,15 @@ class UCTPlanner(val num_simulations: Int, val horizon: Int) {
 */
 fun uct(mdp: MDP, horizon: Int, simulator: Simulator): Long {
 
-    // @TODO: get some actual way of determine when to terminate uct
+    // @TODO: get some actual way of determine when to terminate UCT
     var num_simulations = 1000
 
     var currentState = mdp.startState
-    var planner = UCTPlanner(num_simulations, horizon);
+    var planner = UCTPlanner(simulator, num_simulations, horizon);
 
     return IntStream.iterate(0, {t -> t + 1}).limit(horizon.toLong()).mapToLong {
         // select action
-        val action = planner.selectAction(currentState, simulator, it, horizon);
+        val action = planner.selectAction(currentState, it);
 
         // apply action
         val (nextState, reward) = if (action == LEFT) {
