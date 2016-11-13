@@ -1,4 +1,4 @@
-package main.kotlin.edu.unh.cs.ai.omab
+package edu.unh.cs.ai.omab
 
 import edu.unh.cs.ai.omab.algorithms.expectationMaximization
 import edu.unh.cs.ai.omab.algorithms.thompsonSampling
@@ -12,7 +12,6 @@ import kotlin.system.measureTimeMillis
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
-
 fun main(args: Array<String>) {
     println("OMAB!")
 
