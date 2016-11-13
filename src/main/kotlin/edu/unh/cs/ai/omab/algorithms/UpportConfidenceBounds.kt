@@ -4,10 +4,8 @@ import edu.unh.cs.ai.omab.domain.Action
 import edu.unh.cs.ai.omab.domain.BeliefState
 import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
-import org.apache.commons.math3.distribution.BetaDistribution
 import java.lang.Math.log
 import java.lang.Math.sqrt
-import java.util.*
 import java.util.stream.IntStream
 
 /**

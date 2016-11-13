@@ -15,7 +15,7 @@ fun thompsonSampling(mdp: MDP, horizon: Int, simulator: Simulator): Long {
     val random = Random()
     var currentState = mdp.startState
 
-    return IntStream.iterate(0, {i -> i + 1}).limit(horizon.toLong()).mapToLong {
+    return IntStream.iterate(0, { i -> i + 1 }).limit(horizon.toLong()).mapToLong {
         val leftBetaDistribution = BetaDistribution(currentState.alphaLeft.toDouble(), currentState.betaLeft.toDouble())
         val rightBetaDistribution = BetaDistribution(currentState.alphaRight.toDouble(), currentState.betaRight.toDouble())
 
