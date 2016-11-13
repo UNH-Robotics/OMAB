@@ -30,6 +30,6 @@ fun upperConfidenceBounds(mdp: MDP, horizon: Int, simulator: Simulator): Long {
     }.sum()
 }
 
-fun upperConfidenceBoundsValue(μ: Double, t: Int, depth: Int, α: Double): Double {
+fun upperConfidenceBoundsValue(μ: Double, t: Int, depth: Int, α: Double = 2.0): Double {
     return μ + sqrt(α * log(t.toDouble()) / (2 * depth * (t - 1)))
 }
