@@ -55,10 +55,22 @@ class UCTPlanner(val simulator: Simulator, val num_simulations: Int, val horizon
         }
     }
 
+    /**
+    * @brief Recursively traverses through the tree, selecting actions according to UCB and transition according to the simulator
+    *
+    * Most importantly will stop when the horizon has been reached
+    * Changes into random rollouts when a leave has been reached
+    * Adds a node to the tree at the start of each rollout 
+    * 
+    * @param state the current state 
+    * @param depth the current depth in the tree
+    *
+    * @return 
+    */
     private fun recurTreeSearch(state: BeliefState, depth: Int): Double {
 
         // base case: reached end up horizon and return
-        if (depth + curTime >= depth) {
+        if (depth + curTime >= horizon) {
             return 0.0;
         }
 
@@ -106,6 +118,7 @@ class UCTPlanner(val simulator: Simulator, val num_simulations: Int, val horizon
     * @param simulator the simulator to use for steps
     * @param timestep is the current timestep
     *
+    * See iKocsis, L., and Szepesvari, C. 2006 (Bandit Based Monte-Carlo Planning) for pseudo code 
     * @return an action
     */
     public fun selectAction(rootState: BeliefState, timestep: Int): Action {
