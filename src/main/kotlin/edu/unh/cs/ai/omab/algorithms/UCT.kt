@@ -130,7 +130,6 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
         var count = 0
         while (count++ < numSimulations) {
             // TODO: 
-            /*printRootPolicy(rootState)*/
             recurTreeSearch(rootState, 0)
         }
     }
@@ -159,13 +158,12 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
 fun uct(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Long {
 
     // @TODO: get some actual way of determine when to terminate UCT
-    val numSimulations = 1000
+    val numSimulations = 10000
 
     var currentState = mdp.startState
     val planner = UCTPlanner(simulator, numSimulations, horizon)
 
     return IntStream.iterate(0, { t -> t + 1 }).limit(horizon.toLong()).mapToLong {
-        println("Running timestep $it")
         // select action
         val action = planner.selectAction(currentState, it)
 
