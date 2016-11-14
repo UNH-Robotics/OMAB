@@ -17,11 +17,19 @@ import kotlin.system.measureTimeMillis
 fun main(args: Array<String>) {
     println("OMAB!")
 
-    val horizon = 100
+    val horizon = 10
 
     var averageReward = 0.0
     var executionTime: Long
 
+//    println("Time: ${measureTimeMillis {
+//        val random = Random()
+//        (0..10000).forEach {
+//            val leftBetaDistribution = BetaDistribution((it % 30 + 1).toDouble(), (it % 100 + 1).toDouble())
+//            val leftSample = leftBetaDistribution.inverseCumulativeProbability(random.nextDouble())
+//        }
+//    }/10000.0}")
+//
     executionTime = measureTimeMillis {
     averageReward = evaluateAlgorithm(::uct, horizon)
     }
@@ -47,13 +55,13 @@ private fun evaluateAlgorithm(algorithm: (MDP, Int, Simulator, Simulator) -> Lon
     val averageReward = DoubleStream
             .iterate(0.0, { i -> i + 0.04 })
             .limit(25)
-            .parallel()
+//            .parallel()
             .map { p1 ->
                 DoubleStream
                         .iterate(0.0, { i -> i + 0.04 })
                         .limit(25)
                         .mapToLong { p2 ->
-                            (0..100).map {
+                            (0..50).map {
                                 algorithm(MDP(), horizon, BanditWorld(p1, p2), banditSimulator)
                             }.average().toLong()
                         }.average()

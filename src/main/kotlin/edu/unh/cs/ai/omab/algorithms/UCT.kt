@@ -129,6 +129,7 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
         var count = 0
         while (count++ < numSimulations) {
             recurTreeSearch(rootState, 0)
+            println("Root Q ${graph[rootState]}")
         }
     }
 
