@@ -100,7 +100,6 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
         // perform random rollouts if reached outside of UCT explored tree
         val uctNode: UCTNode = graph[state] ?: return rollout(state, depth)
 
-
         // still inside the tree: keep on recurring deeper
         val action = selectActionUcb(uctNode)
         val (nextState, reward) = simulator.transition(state, action)
@@ -111,9 +110,9 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
     }
 
     private fun selectActionUcb(uctNode: UCTPlanner.UCTNode): Action {
-        val depth = uctNode.leftN + uctNode.rightN
-        val leftUcbValue = upperConfidenceBoundsValue(uctNode.leftQ, uctNode.leftN, depth)
-        val rightUcbValue = upperConfidenceBoundsValue(uctNode.rightQ, uctNode.rightN, depth)
+        val N = uctNode.leftN + uctNode.rightN
+        val leftUcbValue = upperConfidenceBoundsValue(uctNode.leftQ, uctNode.leftN, N, (10000.0 * (horizon - currentTimeStep)))
+        val rightUcbValue = upperConfidenceBoundsValue(uctNode.rightQ, uctNode.rightN, N, (10000.0 * (horizon - currentTimeStep)))
 
         return if (leftUcbValue > rightUcbValue) LEFT else RIGHT
     }
@@ -129,7 +128,6 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
 
         var count = 0
         while (count++ < numSimulations) {
-            // TODO: 
             recurTreeSearch(rootState, 0)
         }
     }
@@ -148,7 +146,6 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
 
         return if (rootQNode.leftQ > rootQNode.rightQ) LEFT else RIGHT
     }
-
 }
 
 /**
@@ -158,7 +155,7 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
 fun uct(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Long {
 
     // @TODO: get some actual way of determine when to terminate UCT
-    val numSimulations = 10000
+    val numSimulations = 500
 
     var currentState = mdp.startState
     val planner = UCTPlanner(simulator, numSimulations, horizon)
