@@ -7,6 +7,7 @@ import edu.unh.cs.ai.omab.domain.Simulator
 import java.lang.Math.log
 import java.lang.Math.sqrt
 import java.util.stream.IntStream
+import kotlin.Double.Companion.POSITIVE_INFINITY
 
 /**
  * @author Bence Cserna (bence@cserna.net)
@@ -31,5 +32,5 @@ fun upperConfidenceBounds(mdp: MDP, horizon: Int, simulator: Simulator): Long {
 }
 
 fun upperConfidenceBoundsValue(μ: Double, t: Int, depth: Int, α: Double = 2.0): Double {
-    return μ + sqrt(α * log(t.toDouble()) / (2 * depth * (t - 1)))
+    return if (t == 1) POSITIVE_INFINITY else μ + sqrt(α * log(t.toDouble()) / (2 * depth * (t - 1)))
 }
