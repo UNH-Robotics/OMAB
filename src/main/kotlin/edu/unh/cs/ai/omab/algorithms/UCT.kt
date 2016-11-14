@@ -10,35 +10,18 @@ import java.util.*
 import java.util.stream.IntStream
 
 /**
- * @brief
- *
  * Can apply UCT on any belief state given the current state and timestep
  *
  * Assumes the Bandit problem with 2 arms and is meant to solve the problem
  * where the expected reward of each arm is unknown and represented as a belief state
- *
- * @param simulator is the generative simulator that is used to perform the steps
- * @param num_simulations is the amount of simulations used by UCT
- * @param horizon is the horizon of the problem
  */
-class UCTPlanner(val simulator: Simulator, val num_simulations: Int, val horizon: Int) {
+class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon: Int) {
 
-    /**
-     * @brief random double generator
-     */
-    val random = Random()
-
-    /**
-     * @brief The current time step UCT is planning for
-     */
+    private val random = Random()
     private var currentTimeStep = 0
 
     /**
-     * @brief A node in the UCT datastructure
-     *
-     * Contains the q value of - and amount of times the action has been taken
-     *
-     * @TODO: generalize to N <q,n> pairs for N is the amount of possible actions.
+     * TODO: generalize to N <q,n> pairs for N is the amount of possible actions.
      */
     data class UCTNode(var leftQ: Double, var leftN: Int, var rightQ: Double, var rightN: Int)
 
@@ -50,22 +33,7 @@ class UCTPlanner(val simulator: Simulator, val num_simulations: Int, val horizon
      */
     private var graph: MutableMap<BeliefState, UCTNode> = HashMap()
 
-    /**
-     * @brief Updates a node of the UCT datastructure given a taken action and perceived q value
-     *
-     * Increments the count associated with the action
-     * Calculates the new mean for the expected return of the associated action
-     *
-     * @TODO: make sure the provided node is a reference, not a copy
-     *
-     * @param node the node to update
-     * @param action taken action
-     * @param q the return from a single simulation from the node after taking action
-     *
-     * @return void
-     */
     private fun updateUCTNode(node: UCTNode, action: Action, q: Double) {
-        // @TODO: I'm sure kotlin has some nicer syntax than this...
         when (action) {
             LEFT -> {
                 node.leftN++
@@ -79,28 +47,15 @@ class UCTPlanner(val simulator: Simulator, val num_simulations: Int, val horizon
         }
     }
 
-    /**
-     * @brief checks if horizon is reached
-     *
-     * @TODO make sure it is not > instead of >=
-     */
-    private fun reachedHorizon(depth: Int) = depth + currentTimeStep >= horizon
+    private fun hasReachedHorizon(depth: Int) = depth + currentTimeStep >= horizon
 
     /**
-     * @brief The UCT rollout is a simulation where the actions are taken randomly until the horizon has been reached
-     *
+     * The UCT rollout is a simulation where the actions are taken randomly until the horizon has been reached
      * Adds the starting point node to the UCT datastructure
-     *
-     * @param state the starting state
-     * @param depth the starting depth from the search tree
-     *
-     * @return void
      */
     private fun rollout(state: BeliefState, depth: Int): Double {
-        println("Starting rollout at depth $depth")
-        // base case: reached horizon
-        if (reachedHorizon(depth)) {
-            println("Reached depth")
+        // base case
+        if (hasReachedHorizon(depth)) {
             return 0.0
         }
 
@@ -110,8 +65,7 @@ class UCTPlanner(val simulator: Simulator, val num_simulations: Int, val horizon
         var currentDepth = depth + 1
         // TODO: add check whether state is terminal to generalize to other problems
         // rollout until horizon reached
-        while (!reachedHorizon(currentDepth)) {
-            println("In rollout at depth $currentDepth")
+        while (!hasReachedHorizon(currentDepth)) {
             val action = if (random.nextBoolean()) LEFT else RIGHT
             val transitionResult = simulator.transition(nextState, action)
             nextState = transitionResult.state
@@ -126,36 +80,26 @@ class UCTPlanner(val simulator: Simulator, val num_simulations: Int, val horizon
             RIGHT -> UCTNode(0.0, 0, rolloutReturn.toDouble(), 1)
             else -> throw RuntimeException("UCT did not create any Q values associated with the rootState")
         }
-
         graph.put(state, newNode)
 
-        println("Ended rollout at depth $currentDepth")
         return rolloutReturn.toDouble()
     }
 
     /**
-     * @brief Recursively traverses through the tree, selecting actions according to UCB and transition according to the simulator
+     * Recursively traverses through the tree, selecting actions according to UCB and transition according to the simulator
+     * Most importantly will stop when the horizon has been reached and changes into random rollouts when a leave has been reached
      *
-     * Most importantly will stop when the horizon has been reached
-     * Changes into random rollouts when a leave has been reached
-     * Adds a node to the datastructure at the start of each rollout
-     *
-     * @param state the current state
-     * @param depth the current depth in the datastructure
-     *
-     * @return
      */
     private fun recurTreeSearch(state: BeliefState, depth: Int): Double {
-        println("In tree at depth $depth")
 
-        // base case: return if horizon has been reached
-        if (reachedHorizon(depth)) {
+        // base case
+        if (hasReachedHorizon(depth)) {
             return 0.0
         }
 
-        val uctNode: UCTNode = graph[state] ?: return rollout(state, depth + 1)
-
         // perform random rollouts if reached outside of UCT explored tree
+        val uctNode: UCTNode = graph[state] ?: return rollout(state, depth)
+
 
         // still inside the tree: keep on recurring deeper
         val action = selectActionUcb(uctNode)
@@ -175,34 +119,25 @@ class UCTPlanner(val simulator: Simulator, val num_simulations: Int, val horizon
     }
 
     /**
-     * @brief Builds the UCT datastructure from root state assuming timestep
-     *
-     * @param rootState the root state of the datastructure
-     *
-     * @return void
+     * Builds the UCT datastructure from root state assuming timestep
      */
     private fun buildTree(rootState: BeliefState) {
-        assert(!reachedHorizon(0))
+        assert(!hasReachedHorizon(0))
 
         // start empty
         graph.clear()
 
         var count = 0
-        while (count++ < num_simulations) {
-            println("Running simulation $count")
+        while (count++ < numSimulations) {
+            // TODO: 
+            printRootPolicy(rootState)
             recurTreeSearch(rootState, 0)
         }
     }
 
     /**
-     * @brief Performs the actual tree search and returns the best action
-     *
-     * @param rootState the starting state
-     * @param simulator the simulator to use for steps
-     * @param timestep is the current timestep
-     *
+     * Performs the actual tree search and returns the best action
      * See Kocsis, L., and Szepesvari, C. 2006 (Bandit Based Monte-Carlo Planning) for pseudo code
-     * @return an action
      */
     fun selectAction(rootState: BeliefState, timestep: Int): Action {
         currentTimeStep = timestep
@@ -218,17 +153,8 @@ class UCTPlanner(val simulator: Simulator, val num_simulations: Int, val horizon
 }
 
 /**
- * @brief Applies UCT on the provided MDP
- *
+ * Applies UCT on the provided MDP
  * @TODO Currently will apply search all the way to the horizon, may make use of a max depth in future
- * @TODO documentation on parameters
- *
- * @param mdp
- * @param Int
- * @param Simulator
- * @param
- *
- * @return accumulated reward of a single instance of UCT planning on this problem
  */
 fun uct(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Long {
 
