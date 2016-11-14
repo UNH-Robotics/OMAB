@@ -23,6 +23,11 @@ import java.util.stream.IntStream
  */
 class UCTPlanner(val simulator: Simulator, val num_simulations: Int, val horizon: Int) {
 
+    /** 
+     * @brief random double generator
+     */
+    val random = Random()
+
     /**
      * @brief The current time step UCT is planning for
      */
@@ -63,14 +68,21 @@ class UCTPlanner(val simulator: Simulator, val num_simulations: Int, val horizon
         // @TODO: I'm sure kotlin has some nicer syntax than this...
         if (action == LEFT) {
             node.leftN++
-            node.leftQ += (q - node.leftQ) / leftN
+            node.leftQ += (q - node.leftQ) / node.leftN
         } else if (action == RIGHT) {
             node.rightN++
-            node.rightQ += (q - node.rightQ) / rightN
+            node.rightQ += (q - node.rightQ) / node.rightN
         } else {
             throw RuntimeException("UCT did not create any Q values associated with the rootState")
         }
     }
+
+    /**
+     * @brief checks if horizon is reached 
+     * 
+     * @TODO make sure it is not > instead of >=
+     */
+    private fun reachedHorizon(depth: Int) = depth + currentTimeStep >= horizon
 
     /**
     * @brief The UCT rollout is a simulation where the actions are taken randomly until the horizon has been reached
@@ -86,28 +98,29 @@ class UCTPlanner(val simulator: Simulator, val num_simulations: Int, val horizon
 
         // base case: reached horizon
         if (reachedHorizon(depth)){
-            return 0
+            return 0.0
         }
 
-        val FirstAction = if (Random() < 0.50) LEFT else RIGHT
-        val (nextState, rolloutReturn) = simulator.transition(state, action)
+        val firstAction = if (random.nextDouble() < 0.50) LEFT else RIGHT
+        var (nextState, rolloutReturn) = simulator.transition(state, firstAction)
 
+        depth = depth + 1
         // @TODO: add check whether state is terminal to generlize to other problems
         // rollout until horizon reached
-        while (reachedHorizon(++depth)) {
+        while (reachedHorizon(depth)) {
             val action = if (Random() < 0.50) LEFT else RIGHT
-            val (nextState, reward) = simulator.transition(state, action)
+            val (nextState, reward) = simulator.transition(nextState, action)
             rolloutReturn += reward;
+            depth = depth + 1
         }
 
         // create and add new node to datastructure
-        newNode = if (FirstAction == LEFT) {
-            UCTNode(rolloutReturn, 1, 0, 0)
-        } else if (FirstAction == RIGHT) {
-            UCTNode(0, 0, rolloutReturn, 1)
-        } else {
-            throw RuntimeException("UCT did not create any Q values associated with the rootState")
+        newNode = when (firstAction) {
+            LEFT  -> UCTNode(rolloutReturn, 1, 0, 0)
+            RIGHT -> UCTNode(0, 0, rolloutReturn, 1)
+            else -> throw RuntimeException("UCT did not create any Q values associated with the rootState")
         }
+
         graph.put(state, newNode)
     }
 
