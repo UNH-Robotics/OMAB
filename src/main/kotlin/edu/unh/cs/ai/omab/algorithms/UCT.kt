@@ -97,8 +97,10 @@ class UCTPlanner(val simulator: Simulator, val num_simulations: Int, val horizon
      * @return void
      */
     private fun rollout(state: BeliefState, depth: Int): Double {
+        println("Starting rollout at depth $depth")
         // base case: reached horizon
         if (reachedHorizon(depth)) {
+            println("Reached depth")
             return 0.0
         }
 
@@ -108,7 +110,8 @@ class UCTPlanner(val simulator: Simulator, val num_simulations: Int, val horizon
         var currentDepth = depth + 1
         // TODO: add check whether state is terminal to generalize to other problems
         // rollout until horizon reached
-        while (reachedHorizon(currentDepth)) {
+        while (!reachedHorizon(currentDepth)) {
+            println("In rollout at depth $currentDepth")
             val action = if (random.nextBoolean()) LEFT else RIGHT
             val transitionResult = simulator.transition(nextState, action)
             nextState = transitionResult.state
@@ -126,6 +129,7 @@ class UCTPlanner(val simulator: Simulator, val num_simulations: Int, val horizon
 
         graph.put(state, newNode)
 
+        println("Ended rollout at depth $currentDepth")
         return rolloutReturn.toDouble()
     }
 
@@ -142,6 +146,7 @@ class UCTPlanner(val simulator: Simulator, val num_simulations: Int, val horizon
      * @return
      */
     private fun recurTreeSearch(state: BeliefState, depth: Int): Double {
+        println("In tree at depth $depth")
 
         // base case: return if horizon has been reached
         if (reachedHorizon(depth)) {
@@ -184,7 +189,7 @@ class UCTPlanner(val simulator: Simulator, val num_simulations: Int, val horizon
 
         var count = 0
         while (count++ < num_simulations) {
-            println("Select action $count")
+            println("Running simulation $count")
             recurTreeSearch(rootState, 0)
         }
     }
@@ -234,6 +239,7 @@ fun uct(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Long {
     val planner = UCTPlanner(simulator, numSimulations, horizon)
 
     return IntStream.iterate(0, { t -> t + 1 }).limit(horizon.toLong()).mapToLong {
+        println("Running timestep $it")
         // select action
         val action = planner.selectAction(currentState, it)
 
