@@ -6,14 +6,14 @@ import edu.unh.cs.ai.omab.domain.Simulator
 import java.util.stream.IntStream
 
 
-fun expectationMaximization(mdp: MDP, horizon: Int, simulator: Simulator): Long {
+fun expectationMaximization(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Long {
     var currentState = mdp.startState
 
     return IntStream.iterate(0, { i -> i + 1 }).limit(horizon.toLong()).mapToLong {
         val (nextState, reward) = if (currentState.leftMean() > currentState.rightMean()) {
-            simulator.transition(currentState, Action.LEFT)
+            world.transition(currentState, Action.LEFT)
         } else {
-            simulator.transition(currentState, Action.RIGHT)
+            world.transition(currentState, Action.RIGHT)
         }
 
         currentState = nextState

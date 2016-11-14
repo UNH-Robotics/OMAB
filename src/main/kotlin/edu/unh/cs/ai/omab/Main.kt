@@ -1,8 +1,7 @@
 package edu.unh.cs.ai.omab
 
-import edu.unh.cs.ai.omab.algorithms.expectationMaximization
-import edu.unh.cs.ai.omab.algorithms.thompsonSampling
-import edu.unh.cs.ai.omab.algorithms.upperConfidenceBounds
+import edu.unh.cs.ai.omab.algorithms.uct
+import edu.unh.cs.ai.omab.domain.BanditSimulator
 import edu.unh.cs.ai.omab.domain.BanditWorld
 import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
@@ -15,30 +14,33 @@ import kotlin.system.measureTimeMillis
 fun main(args: Array<String>) {
     println("OMAB!")
 
-    val horizon = 100000
+    val horizon = 10
 
     var averageReward = 0.0
     var executionTime: Long
 
+//    executionTime = measureTimeMillis {
+//        averageReward = evaluateAlgorithm(::upperConfidenceBounds, horizon)
+//    }
+//    println("UCB  reward: $averageReward executionTime:$executionTime[ms]")
+//
+//    executionTime = measureTimeMillis {
+//        averageReward = evaluateAlgorithm(::thompsonSampling, horizon)
+//    }
+//    println("Thompson sampling reward: $averageReward executionTime:$executionTime[ms]")
+//
+//    executionTime = measureTimeMillis {
+//        averageReward = evaluateAlgorithm(::expectationMaximization, horizon)
+//    }
+//    println("Expectation maximization reward: $averageReward executionTime:$executionTime[ms]")
     executionTime = measureTimeMillis {
-        averageReward = evaluateAlgorithm(::upperConfidenceBounds, horizon)
+        averageReward = evaluateAlgorithm(::uct, horizon)
     }
-    println("UCB  reward: $averageReward executionTime:$executionTime[ms]")
-
-    executionTime = measureTimeMillis {
-        averageReward = evaluateAlgorithm(::thompsonSampling, horizon)
-    }
-    println("Thompson sampling reward: $averageReward executionTime:$executionTime[ms]")
-
-    executionTime = measureTimeMillis {
-        averageReward = evaluateAlgorithm(::expectationMaximization, horizon)
-    }
-    println("Expectation maximization reward: $averageReward executionTime:$executionTime[ms]")
-
-
+    println("UCT  reward: $averageReward executionTime:$executionTime[ms]")
 }
 
-private fun evaluateAlgorithm(algorithm: (MDP, Int, Simulator) -> Long, horizon: Int): Double {
+private fun evaluateAlgorithm(algorithm: (MDP, Int, Simulator, Simulator) -> Long, horizon: Int): Double {
+    val banditSimulator = BanditSimulator()
     val averageReward = DoubleStream
             .iterate(0.0, { i -> i + 0.04 })
             .limit(25)
@@ -48,7 +50,8 @@ private fun evaluateAlgorithm(algorithm: (MDP, Int, Simulator) -> Long, horizon:
                         .iterate(0.0, { i -> i + 0.04 })
                         .limit(25)
                         .mapToLong { p2 ->
-                            algorithm(MDP(), horizon, BanditWorld(p1, p2))
+                            println("Yoppy: $p1 $p2")
+                            algorithm(MDP(), horizon, BanditWorld(p1, p2), banditSimulator)
                         }.average()
                         .orElseThrow { throw RuntimeException() }
             }

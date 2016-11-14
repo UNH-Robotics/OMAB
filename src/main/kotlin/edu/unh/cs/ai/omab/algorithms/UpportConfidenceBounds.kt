@@ -12,7 +12,7 @@ import kotlin.Double.Companion.POSITIVE_INFINITY
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
-fun upperConfidenceBounds(mdp: MDP, horizon: Int, simulator: Simulator): Long {
+fun upperConfidenceBounds(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Long {
     var currentState: BeliefState = mdp.startState
 
     return IntStream.iterate(0, { i -> i + 1 }).limit(horizon.toLong()).mapToLong {
@@ -20,9 +20,9 @@ fun upperConfidenceBounds(mdp: MDP, horizon: Int, simulator: Simulator): Long {
         val rightQ = upperConfidenceBoundsValue(currentState.rightMean(), currentState.leftSum(), currentState.totalSum(), 2.0)
 
         val (nextState, reward) = if (leftQ > rightQ) {
-            simulator.transition(currentState, Action.LEFT)
+            world.transition(currentState, Action.LEFT)
         } else {
-            simulator.transition(currentState, Action.RIGHT)
+            world.transition(currentState, Action.RIGHT)
         }
 
         currentState = nextState

@@ -11,7 +11,7 @@ import java.util.stream.IntStream
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
-fun thompsonSampling(mdp: MDP, horizon: Int, simulator: Simulator): Long {
+fun thompsonSampling(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Long {
     val random = Random()
     var currentState = mdp.startState
 
@@ -23,9 +23,9 @@ fun thompsonSampling(mdp: MDP, horizon: Int, simulator: Simulator): Long {
         val rightSample = rightBetaDistribution.inverseCumulativeProbability(random.nextDouble())
 
         val (nextState, reward) = if (leftSample > rightSample) {
-            simulator.transition(currentState, LEFT)
+            world.transition(currentState, LEFT)
         } else {
-            simulator.transition(currentState, RIGHT)
+            world.transition(currentState, RIGHT)
         }
 
         currentState = nextState
