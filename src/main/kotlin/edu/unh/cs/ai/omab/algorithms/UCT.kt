@@ -140,13 +140,20 @@ class UCTPlanner(val simulator: Simulator, val num_simulations: Int, val horizon
         }
 
         // still inside the tree: keep on recurring deeper
-        // @TODO: implement selectActionUCB
-        val action = selectActionUCB(uctNode)
+        val action = selectActionUcb(uctNode)
         val (nextState, reward) = simulator.transition(state, action)
         val q = reward + recurTreeSearch(nextState, depth + 1)
 
         updateUCTNode(uctNode, action, q)
         return q
+    }
+
+    private fun selectActionUcb(uctNode: UCTPlanner.UCTNode): Action {
+        val depth = uctNode.leftN + uctNode.rightN
+        val leftUcbValue = upperConfidenceBoundsValue(uctNode.leftQ, uctNode.leftN, depth)
+        val rightUcbValue = upperConfidenceBoundsValue(uctNode.rightQ, uctNode.rightN, depth)
+
+        return if (leftUcbValue > rightUcbValue) LEFT else RIGHT
     }
 
     /**
