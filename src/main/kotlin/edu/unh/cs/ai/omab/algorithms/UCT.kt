@@ -130,7 +130,7 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
         var count = 0
         while (count++ < numSimulations) {
             // TODO: 
-            printRootPolicy(rootState)
+            /*printRootPolicy(rootState)*/
             recurTreeSearch(rootState, 0)
         }
     }
