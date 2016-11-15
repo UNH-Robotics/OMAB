@@ -22,6 +22,12 @@ fun main(args: Array<String>) {
     var averageReward = 0.0
     var executionTime: Long
 
+    val mdp = MDP()
+    mdp.generateStates(200)
+    println("State count: ${mdp.count} map size: ${mdp.states.size}")
+
+    return
+
 //    println("Time: ${measureTimeMillis {
 //        val random = Random()
 //        (0..10000).forEach {
@@ -52,17 +58,18 @@ fun main(args: Array<String>) {
 
 private fun evaluateAlgorithm(algorithm: (MDP, Int, Simulator, Simulator) -> Long, horizon: Int): Double {
     val banditSimulator = BanditSimulator()
+    val mdp = MDP()
     val averageReward = DoubleStream
             .iterate(0.0, { i -> i + 0.04 })
             .limit(25)
-//            .parallel()
+            .parallel()
             .map { p1 ->
                 DoubleStream
                         .iterate(0.0, { i -> i + 0.04 })
                         .limit(25)
                         .mapToLong { p2 ->
                             (0..50).map {
-                                algorithm(MDP(), horizon, BanditWorld(p1, p2), banditSimulator)
+                                algorithm(mdp, horizon, BanditWorld(p1, p2), banditSimulator)
                             }.average().toLong()
                         }.average()
                         .orElseThrow { throw RuntimeException() }
