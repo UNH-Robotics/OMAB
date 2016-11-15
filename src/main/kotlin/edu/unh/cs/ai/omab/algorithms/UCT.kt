@@ -129,7 +129,7 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
         var count = 0
         while (count++ < numSimulations) {
             recurTreeSearch(rootState, 0)
-            println("Root Q ${graph[rootState]}")
+//            println("Root Q ${graph[rootState]}")
         }
     }
 
@@ -156,7 +156,7 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
 fun uct(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Long {
 
     // @TODO: get some actual way of determine when to terminate UCT
-    val numSimulations = 500
+    val numSimulations = 100
 
     var currentState = mdp.startState
     val planner = UCTPlanner(simulator, numSimulations, horizon)
