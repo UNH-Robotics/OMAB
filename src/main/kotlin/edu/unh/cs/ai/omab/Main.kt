@@ -8,6 +8,7 @@ import edu.unh.cs.ai.omab.domain.BanditSimulator
 import edu.unh.cs.ai.omab.domain.BanditWorld
 import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
+import java.lang.Math.max
 import java.util.stream.DoubleStream
 import kotlin.system.measureTimeMillis
 
@@ -22,11 +23,11 @@ fun main(args: Array<String>) {
     var averageReward = 0.0
     var executionTime: Long
 
-    val mdp = MDP()
-    mdp.generateStates(200)
-    println("State count: ${mdp.count} map size: ${mdp.states.size}")
+//    val mdp = MDP()
+//    mdp.generateStates(200)
+//    println("State count: ${mdp.count} map size: ${mdp.states.size}")
 
-    return
+//    return
 
 //    println("Time: ${measureTimeMillis {
 //        val random = Random()
@@ -39,21 +40,21 @@ fun main(args: Array<String>) {
     executionTime = measureTimeMillis {
     averageReward = evaluateAlgorithm(::uct, horizon)
     }
-    println("UCT  reward: $averageReward executionTime:$executionTime[ms]")
+    println("UCT  regret: $averageReward executionTime:$executionTime[ms]")
     executionTime = measureTimeMillis {
         averageReward = evaluateAlgorithm(::upperConfidenceBounds, horizon)
     }
-    println("UCB  reward: $averageReward executionTime:$executionTime[ms]")
+    println("UCB  regret: $averageReward executionTime:$executionTime[ms]")
 
     executionTime = measureTimeMillis {
         averageReward = evaluateAlgorithm(::thompsonSampling, horizon)
     }
-    println("Thompson sampling reward: $averageReward executionTime:$executionTime[ms]")
+    println("Thompson sampling regret: $averageReward executionTime:$executionTime[ms]")
 
     executionTime = measureTimeMillis {
         averageReward = evaluateAlgorithm(::expectationMaximization, horizon)
     }
-    println("Expectation maximization reward: $averageReward executionTime:$executionTime[ms]")
+    println("Expectation maximization regret: $averageReward executionTime:$executionTime[ms]")
 }
 
 private fun evaluateAlgorithm(algorithm: (MDP, Int, Simulator, Simulator) -> Long, horizon: Int): Double {
@@ -69,7 +70,7 @@ private fun evaluateAlgorithm(algorithm: (MDP, Int, Simulator, Simulator) -> Lon
                         .limit(25)
                         .mapToLong { p2 ->
                             (0..50).map {
-                                algorithm(mdp, horizon, BanditWorld(p1, p2), banditSimulator)
+                                max(p1, p2) * horizon - algorithm(mdp, horizon, BanditWorld(p1, p2), banditSimulator)
                             }.average().toLong()
                         }.average()
                         .orElseThrow { throw RuntimeException() }
