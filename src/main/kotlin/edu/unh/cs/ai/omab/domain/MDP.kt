@@ -47,7 +47,7 @@ enum class Action {
         }
 
         fun getReward(action: Action): Double {
-            return 0.0
+            return 1.0
         }
     }
 }
@@ -83,6 +83,10 @@ class MDP(depth: Int? = null) {
                 }
             }
         }
+    }
+
+    fun generateStatesGivenState(depth: Int, state: BeliefState) {
+
     }
 
     fun getStates(level: Int): List<BeliefState> = statesByLevel[level]

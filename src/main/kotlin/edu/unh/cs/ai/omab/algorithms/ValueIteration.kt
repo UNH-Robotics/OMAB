@@ -5,6 +5,7 @@ import edu.unh.cs.ai.omab.domain.BeliefState
 import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
 import java.util.*
+import java.util.stream.IntStream
 
 /** the algorithm the outside calls do perform value iteration*/
 fun valueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
@@ -50,34 +51,35 @@ fun valueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulato
     }
 
     val valueIteration = ValueIteration()
-    valueIteration.doValueIteration(mdpStates, numberOfStates, states)
-    return states[mdp.startState]!!.utility
+    val policy = valueIteration.doValueIteration(mdpStates, numberOfStates, states)
+    var currentState = mdp.startState
+    return IntStream.range(0, horizon).mapToDouble {
+        // Select action based on the policy
+        val bestAction = policy[currentState]!!
+
+        val (nextState, reward) = world.transition(currentState, bestAction)
+        currentState = nextState
+
+        reward.toDouble()
+    }.sum()
 }
 
 class ValueIteration() {
-    /** the myth the legend value iteration~~~~*/
     fun doValueIteration(mdpStates: MutableList<MutableList<BeliefState>>, numberOfStates: Int,
                          states: MutableMap<BeliefState, BeliefState>): MutableMap<BeliefState, Action> {
 
         val values: MutableList<Double> = ArrayList(numberOfStates)
-        val valuesPrime: MutableList<Double> = ArrayList(numberOfStates)
 
         val policy: MutableMap<BeliefState, Action> = HashMap()
 
         for (level in (mdpStates.size)..0) {
             for (stateIndex in 0..(mdpStates[level].size-1)) {
-                printValues(values)
-                valuesPrime[stateIndex] = maxActionSum(mdpStates[level][stateIndex])
+                values[stateIndex] = maxActionSum(mdpStates[level][stateIndex])
             }
         }
 
         calculatePolicy(policy, values, states, mdpStates)
         return policy
-    }
-
-    /** debug functions for printing*/
-    fun printValues(values: MutableList<Double>) {
-        values.forEach(::println)
     }
 
     /** calculates optimal policy given the converged values*/
@@ -113,6 +115,9 @@ class ValueIteration() {
     /** calculate the vector of transition times optimal values only called after utilities have been updated*/
     fun optimalMaxSum(state: BeliefState, values: MutableList<Double>): MutableList<Double> {
         val actionSum: MutableList<Double> = ArrayList(values.size)
+        for(index in 0..(Action.Companion.getActions().size-1)) {
+            actionSum.add(0.0)
+        }
 
         for (actionIndex in 0..(Action.Companion.getActions().size - 1)) {
             for (successorIndex in 0..1) {
