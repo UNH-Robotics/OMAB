@@ -25,6 +25,16 @@ data class BeliefState(val alphaLeft: Int, val betaLeft: Int, val alphaRight: In
                 RIGHT == action && !success -> BeliefState(alphaLeft, betaLeft, alphaRight, betaRight + 1)
                 else -> throw RuntimeException("Invalid state!")
             }
+
+    fun actionMean(action: Action) = when (action) {
+        Action.LEFT -> leftMean()
+        Action.RIGHT -> rightMean()
+    }
+
+    fun actionSum(action: Action) = when (action) {
+        Action.LEFT -> leftSum()
+        Action.RIGHT -> rightSum()
+    }
 }
 
 enum class Action {
@@ -35,33 +45,48 @@ enum class Action {
             val availableActions = listOf(LEFT, RIGHT)
             return availableActions
         }
+
+        fun getReward(action: Action): Double {
+            return 0.0
+        }
     }
 }
 
 data class TransitionResult(val state: BeliefState, val reward: Int)
 
-class MDP() {
+class MDP(depth: Int? = null) {
     val states: MutableMap<BeliefState, BeliefState> = HashMap()
+    private val mapsByLevel: Array<MutableMap<BeliefState, BeliefState>>
+    private val statesByLevel: Array<MutableList<BeliefState>>
 
-    constructor(depth: Int) : this() {
-        generateStates(depth)
+    init {
+        mapsByLevel = Array<MutableMap<BeliefState, BeliefState>>(depth?.plus(1) ?: 0, { HashMap<BeliefState, BeliefState>() })
+        statesByLevel = Array<MutableList<BeliefState>>(depth?.plus(1) ?: 0, { ArrayList<BeliefState>() })
+        if (depth != null) {
+            generateStates(depth)
+        }
     }
 
     fun generateStates(depth: Int) {
-        (1..depth).forEach { leftAlpha ->
-            (1..(depth - leftAlpha)).forEach { leftBeta ->
-                (1..(depth - leftAlpha - leftBeta)).forEach { rightAlpha ->
-                    (1..(depth - leftAlpha - leftBeta - rightAlpha)).forEach { rightBeta ->
+        val sum = depth + 4 //  4 is the prior
+        for (leftAlpha in 1..sum) {
+            for (leftBeta in 1..(sum - leftAlpha)) {
+                for (rightAlpha in 1..(sum - leftAlpha - leftBeta)) {
+                    for (rightBeta in 1..(sum - leftAlpha - leftBeta - rightAlpha)) {
                         val state = BeliefState(leftAlpha, leftBeta, rightAlpha, rightBeta)
-                        if (states[state] == null) {
-                            count++
-                            states[state] = state
-                        }
+                        count++
+                        states[state] = state
+                        val level = leftAlpha + leftBeta + rightAlpha + rightBeta - 4 // 4 is the prior
+                        mapsByLevel[level][state] = state
+                        statesByLevel[level].add(state)
                     }
                 }
             }
         }
     }
+
+    fun getStates(level: Int): List<BeliefState> = statesByLevel[level]
+    fun getLookupState(level: Int, state: BeliefState): BeliefState = mapsByLevel[level][state] ?: throw RuntimeException("Cannot find state: $state")
 
     var count = 0
     val startState = BeliefState(1, 1, 1, 1)

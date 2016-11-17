@@ -1,6 +1,7 @@
 package edu.unh.cs.ai.omab
 
 import edu.unh.cs.ai.omab.algorithms.expectationMaximization
+import edu.unh.cs.ai.omab.algorithms.simpleValueIteration
 import edu.unh.cs.ai.omab.algorithms.thompsonSampling
 import edu.unh.cs.ai.omab.algorithms.upperConfidenceBounds
 import edu.unh.cs.ai.omab.domain.BanditSimulator
@@ -26,12 +27,14 @@ fun main(args: Array<String>) {
     val horizon = 10
 
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
-    val mdp = MDP(100) // TODO Think about parallel access
+    val mdp = MDP(10) // TODO Think about parallel access
 
 //    evaluateAlgorithm("UCT", ::uct, horizon, mdp, results)
+    evaluateAlgorithm("SimpleValueIteration", ::simpleValueIteration, horizon, mdp, results)
     evaluateAlgorithm("UCB", ::upperConfidenceBounds, horizon, mdp, results)
     evaluateAlgorithm("Thompson Sampling", ::thompsonSampling, horizon, mdp, results)
     evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, mdp, results)
+    evaluateAlgorithm("VI", ::simpleValueIteration, horizon, mdp, results)
 
     if (args.isEmpty()) {
         println(results.toString())
