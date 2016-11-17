@@ -86,7 +86,8 @@ class MDP(depth: Int? = null) {
     }
 
     fun getStates(level: Int): List<BeliefState> = statesByLevel[level]
-    fun getLookupState(level: Int, state: BeliefState): BeliefState = mapsByLevel[level][state] ?: throw RuntimeException("Cannot find state: $state")
+    fun getLookupState(level: Int, state: BeliefState): BeliefState = mapsByLevel[level][state]
+            ?: throw RuntimeException("Cannot find state: $state on level $level")
 
     var count = 0
     val startState = BeliefState(1, 1, 1, 1)

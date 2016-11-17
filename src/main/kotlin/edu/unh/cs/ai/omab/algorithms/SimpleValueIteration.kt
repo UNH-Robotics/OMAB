@@ -17,12 +17,14 @@ fun calculateQ(state: BeliefState, action: Action, mdp: MDP): Double {
     val successState = state.nextState(action, true)
     val failState = state.nextState(action, false)
 
-    val successorLevel = state.totalSum() - 4 // 4 is the sum of priors for 2 arms
+    val successorLevel = state.totalSum() - 4  + 1// 4 is the sum of priors for 2 arms
     val successMdpState = mdp.getLookupState(successorLevel, successState)
     val failMdpState = mdp.getLookupState(successorLevel, failState)
 
     // Calculate the probability weighed future utility
-    return successProbabily * (successMdpState.utility + Action.getReward(action)) + failProbability * failMdpState.utility
+    val expectedValueOfSuccess = successProbabily * (successMdpState.utility + Action.getReward(action))
+    val expectedValueOfFailure = failProbability * failMdpState.utility
+    return expectedValueOfSuccess + expectedValueOfFailure
 }
 
 fun selectBestAction(state: BeliefState, mdp: MDP): Pair<Action, Double> {

@@ -35,13 +35,12 @@ fun main(args: Array<String>) {
     evaluateAlgorithm("UCB", ::upperConfidenceBounds, horizon, mdp, results)
     evaluateAlgorithm("Thompson Sampling", ::thompsonSampling, horizon, mdp, results)
     evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, mdp, results)
-    evaluateAlgorithm("Valute Iteration", ::valueIteration, horizon, mdp, results)
+//    evaluateAlgorithm("Valute Iteration", ::simpln, horizon, mdp, results)
 
-    if (args.isEmpty()) {
-        println(results.toString())
-    } else {
+    if (args.isNotEmpty()) {
         File(args[0]).bufferedWriter().use { results.toJson(it) }
     }
+//        println(results.toString())
 }
 
 private fun evaluateAlgorithm(algorithm: String, function: KFunction4<MDP, Int, Simulator, Simulator, Double>, horizon: Int, mdp: MDP, results: MutableList<Result>) {

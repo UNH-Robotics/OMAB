@@ -86,7 +86,7 @@ class ValueIteration() {
                         mdpStates: MutableList<MutableList<BeliefState>>) {
         for (level in 0..(mdpStates.size - 1)) {
             for (stateIndex in 0..(mdpStates[level].size - 1)) {
-                val stateOptimalValue: MutableList<Double> = optimalMaxSum(states[mdpStates[level][stateIndex]], values)
+                val stateOptimalValue: MutableList<Double> = optimalMaxSum(states[mdpStates[level][stateIndex]]!!, values)
                 val optimalAction: Int = optimalMaxAction(stateOptimalValue)
                 policy[mdpStates[level][stateIndex]] = if (optimalAction == 0) Action.LEFT else Action.RIGHT
             }
@@ -111,17 +111,17 @@ class ValueIteration() {
     }
 
     /** calculate the vector of transition times optimal values only called after utilities have been updated*/
-    fun optimalMaxSum(state: BeliefState?, values: MutableList<Double>): MutableList<Double> {
+    fun optimalMaxSum(state: BeliefState, values: MutableList<Double>): MutableList<Double> {
         val actionSum: MutableList<Double> = ArrayList(values.size)
 
         for (actionIndex in 0..(Action.Companion.getActions().size - 1)) {
             for (successorIndex in 0..1) {
                 if (successorIndex % 2 == 0) {
-                    val successorValue: Double = state!!.nextState(if (actionIndex == 0) Action.LEFT else Action.RIGHT,
+                    val successorValue: Double = state.nextState(if (actionIndex == 0) Action.LEFT else Action.RIGHT,
                             if (successorIndex == 0) true else false).utility
                     actionSum[actionIndex] += state.leftMean() * (successorValue + (if (successorIndex == 0) 1 else 0))
                 } else {
-                    val successorValue: Double = state!!.nextState(if (actionIndex == 0) Action.LEFT else Action.RIGHT,
+                    val successorValue: Double = state.nextState(if (actionIndex == 0) Action.LEFT else Action.RIGHT,
                             if (successorIndex == 0) true else false).utility
                     actionSum[actionIndex] += state.rightMean() * (successorValue + (if (successorIndex == 0) 1 else 0))
                 }
