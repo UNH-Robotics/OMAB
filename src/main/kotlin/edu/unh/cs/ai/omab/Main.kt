@@ -2,6 +2,7 @@ package edu.unh.cs.ai.omab
 
 import edu.unh.cs.ai.omab.algorithms.expectationMaximization
 import edu.unh.cs.ai.omab.algorithms.simpleValueIteration
+import edu.unh.cs.ai.omab.algorithms.rtdp
 import edu.unh.cs.ai.omab.algorithms.thompsonSampling
 import edu.unh.cs.ai.omab.algorithms.upperConfidenceBounds
 import edu.unh.cs.ai.omab.algorithms.valueIteration
@@ -25,8 +26,7 @@ import kotlin.system.measureTimeMillis
 fun main(args: Array<String>) {
     println("OMAB!")
 
-    val horizon = 3
-
+    val horizon = 10
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
     val mdp = MDP(horizon) // TODO Think about parallel access
 
@@ -36,11 +36,11 @@ fun main(args: Array<String>) {
     evaluateAlgorithm("Thompson Sampling", ::thompsonSampling, horizon, mdp, results)
     evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, mdp, results)
     evaluateAlgorithm("Value Iteration", ::valueIteration, horizon, mdp, results)
+    evaluateAlgorithm("RTDP", ::rtdp, horizon, mdp, results)
 
     if (args.isNotEmpty()) {
         File(args[0]).bufferedWriter().use { results.toJson(it) }
     }
-//        println(results.toString())
 }
 
 private fun evaluateAlgorithm(algorithm: String, function: KFunction4<MDP, Int, Simulator, Simulator, Double>, horizon: Int, mdp: MDP, results: MutableList<Result>) {
