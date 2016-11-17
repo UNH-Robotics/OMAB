@@ -33,6 +33,8 @@ enum class Action {
     fun getActions() = listOf(LEFT, RIGHT)
 }
 
+fun getActions() = Action.values()
+
 data class TransitionResult(val state: BeliefState, val reward: Int)
 
 class MDP {
