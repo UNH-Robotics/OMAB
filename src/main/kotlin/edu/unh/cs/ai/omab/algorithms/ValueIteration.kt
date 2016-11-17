@@ -39,28 +39,18 @@ fun valueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulato
 class ValueIteration(val mdp: MDP, val horizon: Int, val world: Simulator, val simulator: Simulator) {
     /** the myth the legend value iteration~~~~*/
     fun doValueIteration(mdpStates: MutableList<MutableList<BeliefState>>, numberOfStates: Int,
-                         states: MutableMap<BeliefState, BeliefState>): MutableList<Int> {
+                         states: MutableMap<BeliefState, BeliefState>): MutableMap<BeliefState, Action> {
 
         val values: MutableList<Double> = ArrayList(numberOfStates)
         val valuesPrime: MutableList<Double> = ArrayList(numberOfStates)
 
-        var terminate: Boolean = false
+        val policy: MutableMap<BeliefState, Action> = HashMap()
 
-        var backups: Int = 0
-        val policy: Map<BeliefState, Action> = HashMap()
-
-        while (!terminate) {
-            for (stateIndex in 0..(states.size - 1)) {
-                printValues(values)
-                valuesPrime[stateIndex] = maxActionSum(states[stateIndex], values, stateIndex)
-                backups += 1
-            }
-
-            if (backups == states.size - 1) {
-                terminate = true
-            }
-
+        for (stateIndex in 0..(states.size - 1)) {
+            printValues(values)
+            valuesPrime[stateIndex] = maxActionSum(TODO())
         }
+
         calculatePolicy(policy, values, states)
         return policy
     }
@@ -71,9 +61,9 @@ class ValueIteration(val mdp: MDP, val horizon: Int, val world: Simulator, val s
     }
 
     /** calculates optimal policy given the converged values*/
-    fun calculatePolicy(policy: MutableList<Int>, values: MutableList<Double>, states: MutableList<State>) {
+    fun calculatePolicy(policy: MutableMap<BeliefState, Action>, values: MutableList<Double>, states: MutableMap<BeliefState, BeliefState>) {
         for (stateIndex in 0..(states.size - 1)) {
-            val stateOptimalValue: MutableList<Double> = optimalMaxSum(states[stateIndex], values, stateIndex)
+            val stateOptimalValue: MutableList<Double> = optimalMaxSum(states[])
             val optimalAction: Int = optimalMaxAction(stateOptimalValue)
             policy[stateIndex] = optimalAction
         }
@@ -96,28 +86,44 @@ class ValueIteration(val mdp: MDP, val horizon: Int, val world: Simulator, val s
         return currentMaxIndex
     }
 
-    /** calculate the vector of transition times optimal values*/
-    fun optimalMaxSum(state: State, values: MutableList<Double>, stateIndex: Int): MutableList<Double> {
+    /** calculate the vector of transition times optimal values only called after utilities have been updated*/
+    fun optimalMaxSum(state: BeliefState, values: MutableList<Double>, stateIndex: Int): MutableList<Double> {
         val actionSum: MutableList<Double> = ArrayList(values.size)
 
-        for (actionIndex in 0..(state.actions.size - 1)) {
-            for (successorIndex in 0..(state.actions[actionIndex].successors.size)) {
-                actionSum += state.actions[actionIndex].successors[successorIndex].probability *
-                        values[state.actions[actionIndex].successors[successorIndex].state]
+        for (actionIndex in 0..(Action.Companion.getActions().size - 1)) {
+            for (successorIndex in 0..1) {
+                if (successorIndex % 2 == 0) {
+                    val successorValue: Double = state.nextState(if (actionIndex == 0) Action.LEFT else Action.RIGHT,
+                            if (successorIndex == 0) true else false).utility
+                    actionSum[actionIndex] += state.leftMean() * (successorValue + (if (successorIndex == 0) 1 else 0))
+                } else {
+                    val successorValue: Double = state.nextState(if (actionIndex == 0) Action.LEFT else Action.RIGHT,
+                            if (successorIndex == 0) true else false).utility
+                    actionSum[actionIndex] += state.rightMean() * (successorValue + (if (successorIndex == 0) 1 else 0))
+                }
             }
         }
         return actionSum
     }
 
     /** takes a state, values, and state under evaluation
-     * gives back the max of the sum of the state probabilities times value*/
-    fun maxActionSum(state: State, values: MutableList<Double>, stateIndex: Int): Double {
-        val actionSum: MutableList<Double> = ArrayList(state.numberOfActions)
+     * gives back the max of the sum of the state probabilities times value
+     * called only while updating utilities*/
+    fun maxActionSum(state: BeliefState): Double {
+        val actionSum: MutableList<Double> = ArrayList(Action.Companion.getActions().size)
 
-        for (actionIndex in 0..(state.actions.size - 1)) {
-            for (successorIndex in 0..(state.actions[actionIndex].successors.size - 1)) {
-                actionSum[actionIndex] += state.actions[actionIndex].successors[successorIndex].probability *
-                        values[state.actions[actionIndex].successors[successorIndex].state]
+        for (actionIndex in 0..(Action.Companion.getActions().size - 1)) {
+            for (successorIndex in 0..1) {
+                if (successorIndex % 2 == 0) {
+                    val successorValue: Double = state.nextState(if (actionIndex == 0) Action.LEFT else Action.RIGHT,
+                            if (successorIndex == 0) true else false).utility
+                    actionSum[actionIndex] += state.leftMean() * (successorValue + (if (successorIndex == 0) 1 else 0))
+                } else {
+                    val successorValue: Double = state.nextState(if (actionIndex == 0) Action.LEFT else Action.RIGHT,
+                            if (successorIndex == 0) true else false).utility
+                    actionSum[actionIndex] += state.rightMean() * (successorValue + (if (successorIndex == 0) 1 else 0))
+                }
+
             }
         }
         return actionMax(actionSum)
