@@ -59,6 +59,9 @@ class MDP(depth: Int? = null) {
     private val mapsByLevel: Array<MutableMap<BeliefState, BeliefState>>
     private val statesByLevel: Array<MutableList<BeliefState>>
 
+    val startState = BeliefState(1, 1, 1, 1)
+    val onTheFlyStates = generateStates(depth!!, startState)
+
     init {
         mapsByLevel = Array<MutableMap<BeliefState, BeliefState>>(depth?.plus(1) ?: 0, { HashMap<BeliefState, BeliefState>() })
         statesByLevel = Array<MutableList<BeliefState>>(depth?.plus(1) ?: 0, { ArrayList<BeliefState>() })
@@ -85,8 +88,18 @@ class MDP(depth: Int? = null) {
         }
     }
 
-    fun generateStatesGivenState(depth: Int, state: BeliefState) {
-
+    fun generateStates(depth: Int, state: BeliefState): ArrayList<BeliefState> {
+        val initializedStates = ArrayList<BeliefState>()
+        for (x in 0..(depth)) {
+            for (y in 0..(depth - x)) {
+                (0..(depth - x - y))
+                        .mapTo(initializedStates) {
+                            BeliefState(x + state.alphaLeft, y + state.betaLeft,
+                                    it + state.alphaRight, depth - x - y - it + state.betaRight)
+                        }
+            }
+        }
+        return initializedStates
     }
 
     fun getStates(level: Int): List<BeliefState> = statesByLevel[level]
@@ -94,7 +107,6 @@ class MDP(depth: Int? = null) {
             ?: throw RuntimeException("Cannot find state: $state on level $level")
 
     var count = 0
-    val startState = BeliefState(1, 1, 1, 1)
 }
 
 abstract class Simulator() {
