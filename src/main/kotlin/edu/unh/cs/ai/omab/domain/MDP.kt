@@ -28,7 +28,9 @@ data class BeliefState(val alphaLeft: Int, val betaLeft: Int, val alphaRight: In
 }
 
 enum class Action {
-    LEFT, RIGHT
+    LEFT, RIGHT;
+
+    fun getActions() = listOf(LEFT, RIGHT)
 }
 
 data class TransitionResult(val state: BeliefState, val reward: Int)
