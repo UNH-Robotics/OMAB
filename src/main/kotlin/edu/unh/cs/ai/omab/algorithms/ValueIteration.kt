@@ -1,39 +1,45 @@
 package edu.unh.cs.ai.omab.algorithms
 
+import edu.unh.cs.ai.omab.domain.Action
+import edu.unh.cs.ai.omab.domain.BeliefState
 import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
 import java.util.*
 
-data class Successor(val state: Int, val probability: Double)
-
-data class Action(val numberOfSuccessors: Int) {
-
-    val successors: MutableList<Successor> = ArrayList()
-
-    fun addSuccessor(successor: Successor) {
-        successors.add(successor)
-    }
-
-}
-
-data class State(val reward: Double, val isTerminal: Int, val numberOfActions: Int) {
-
-    val actions: MutableList<Action> = ArrayList()
-
-    fun addAction(action: Action) {
-        actions.add(action)
-    }
-
-}
+//data class Successor(val state: Int, val probability: Double)
+//
+//data class Action(val numberOfSuccessors: Int) {
+//
+//    val successors: MutableList<Successor> = ArrayList()
+//
+//    fun addSuccessor(successor: Successor) {
+//        successors.add(successor)
+//    }
+//
+//}
+//
+//data class State(val reward: Double, val isTerminal: Int, val numberOfActions: Int) {
+//
+//    val actions: MutableList<Action> = ArrayList()
+//
+//    fun addAction(action: Action) {
+//        actions.add(action)
+//    }
+//
+//}
 
 /** the algorithm the outside calls do perform value iteration*/
 fun valueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Long {
+    val states: MutableMap<BeliefState, BeliefState> = mdp.states
+
+    val valueIteration = ValueIteration(mdp, horizon, world, simulator)
     TODO()
 }
 
 class ValueIteration(val mdp: MDP, val horizon: Int, val world: Simulator, val simulator: Simulator) {
     /** the myth the legend value iteration~~~~*/
-    fun doValueIteration(discountFactor: Double, terminationCondition: Double, startState: Int, numberOfStates: Int, states: MutableList<State>): MutableList<Int> {
+    fun doValueIteration(mdpStates: MutableList<MutableList<BeliefState>>, numberOfStates: Int,
+                         states: MutableMap<BeliefState, BeliefState>): MutableList<Int> {
 
         val values: MutableList<Double> = ArrayList(numberOfStates)
         val valuesPrime: MutableList<Double> = ArrayList(numberOfStates)
@@ -41,13 +47,12 @@ class ValueIteration(val mdp: MDP, val horizon: Int, val world: Simulator, val s
         var terminate: Boolean = false
 
         var backups: Int = 0
-        val policy: MutableList<Int> = ArrayList()
+        val policy: Map<BeliefState, Action> = HashMap()
 
         while (!terminate) {
             for (stateIndex in 0..(states.size - 1)) {
                 printValues(values)
-                valuesPrime[stateIndex] = states[stateIndex].reward + discountFactor *
-                        maxActionSum(states[stateIndex], values, stateIndex)
+                valuesPrime[stateIndex] = maxActionSum(states[stateIndex], values, stateIndex)
                 backups += 1
             }
 
