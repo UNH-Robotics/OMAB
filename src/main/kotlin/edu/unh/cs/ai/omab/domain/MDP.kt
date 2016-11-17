@@ -9,6 +9,8 @@ import java.util.*
  */
 
 data class BeliefState(val alphaLeft: Int, val betaLeft: Int, val alphaRight: Int, val betaRight: Int) {
+    val utility = 0.0
+
     fun leftSum() = alphaLeft + betaLeft
     fun rightSum() = alphaRight + betaRight
     fun totalSum() = leftSum() + rightSum()
@@ -26,8 +28,12 @@ data class BeliefState(val alphaLeft: Int, val betaLeft: Int, val alphaRight: In
 }
 
 enum class Action {
-    LEFT, RIGHT
+    LEFT, RIGHT;
+
+    fun getActions() = listOf(LEFT, RIGHT)
 }
+
+fun getActions() = Action.values()
 
 data class TransitionResult(val state: BeliefState, val reward: Int)
 

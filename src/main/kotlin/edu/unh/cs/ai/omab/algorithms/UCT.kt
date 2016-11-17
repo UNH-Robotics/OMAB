@@ -153,7 +153,7 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
  * Applies UCT on the provided MDP
  * @TODO Currently will apply search all the way to the horizon, may make use of a max depth in future
  */
-fun uct(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Long {
+fun uct(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
 
     // @TODO: get some actual way of determine when to terminate UCT
     val numSimulations = 100
@@ -177,5 +177,5 @@ fun uct(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Long {
         currentState = nextState
 
         reward.toLong()
-    }.sum()
+    }.sum().toDouble()
 }
