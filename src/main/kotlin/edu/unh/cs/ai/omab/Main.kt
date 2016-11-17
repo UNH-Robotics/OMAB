@@ -4,6 +4,7 @@ import edu.unh.cs.ai.omab.algorithms.expectationMaximization
 import edu.unh.cs.ai.omab.algorithms.simpleValueIteration
 import edu.unh.cs.ai.omab.algorithms.thompsonSampling
 import edu.unh.cs.ai.omab.algorithms.upperConfidenceBounds
+import edu.unh.cs.ai.omab.algorithms.valueIteration
 import edu.unh.cs.ai.omab.domain.BanditSimulator
 import edu.unh.cs.ai.omab.domain.BanditWorld
 import edu.unh.cs.ai.omab.domain.MDP
@@ -34,7 +35,7 @@ fun main(args: Array<String>) {
     evaluateAlgorithm("UCB", ::upperConfidenceBounds, horizon, mdp, results)
     evaluateAlgorithm("Thompson Sampling", ::thompsonSampling, horizon, mdp, results)
     evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, mdp, results)
-    evaluateAlgorithm("VI", ::simpleValueIteration, horizon, mdp, results)
+    evaluateAlgorithm("Valute Iteration", ::valueIteration, horizon, mdp, results)
 
     if (args.isEmpty()) {
         println(results.toString())
