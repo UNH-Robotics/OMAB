@@ -22,13 +22,13 @@ repositories {
     mavenCentral()
 }
 
-//task run(type: JavaExec) {
-//    main = 'edu.unh.cs.ai.omab.MainKt'
-//    def argList = []
-//
-//    args = argList
-//    classpath = sourceSets.main.runtimeClasspath
-//}
+task run(type: JavaExec) {
+    main = 'edu.unh.cs.ai.omab.MainKt'
+    def argList = ["results/result1.dat"]
+
+    args = argList
+    classpath = sourceSets.main.runtimeClasspath
+}
 
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
