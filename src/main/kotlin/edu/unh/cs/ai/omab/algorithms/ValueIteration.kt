@@ -6,37 +6,55 @@ import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
 import java.util.*
 
-//data class Successor(val state: Int, val probability: Double)
-//
-//data class Action(val numberOfSuccessors: Int) {
-//
-//    val successors: MutableList<Successor> = ArrayList()
-//
-//    fun addSuccessor(successor: Successor) {
-//        successors.add(successor)
-//    }
-//
-//}
-//
-//data class State(val reward: Double, val isTerminal: Int, val numberOfActions: Int) {
-//
-//    val actions: MutableList<Action> = ArrayList()
-//
-//    fun addAction(action: Action) {
-//        actions.add(action)
-//    }
-//
-//}
-
 /** the algorithm the outside calls do perform value iteration*/
-fun valueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Long {
+fun valueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
+    mdp.generateStates(horizon)
     val states: MutableMap<BeliefState, BeliefState> = mdp.states
 
-    val valueIteration = ValueIteration(mdp, horizon, world, simulator)
-    TODO()
+    var numberOfStates: Int = 0
+
+    val mdpStates: MutableList<MutableList<BeliefState>> = ArrayList()
+    var preLevel: MutableList<BeliefState> = ArrayList()
+    var curLevel: MutableList<BeliefState> = ArrayList()
+
+    preLevel.add(mdp.startState)
+    mdpStates.add(preLevel)
+
+    for (currentIndexLevel in 0..horizon-1) {
+        curLevel = ArrayList()
+
+        for (previousIndexLevel in 0..(preLevel.size - 1)) {
+            for (actionIndex in 0..(Action.Companion.getActions().size - 1)) {
+                for (successorIndex in 0..1) {
+                    if (successorIndex % 2 == 0) {
+                        val tempState: BeliefState = preLevel[previousIndexLevel].nextState(
+                                if (actionIndex == 0) Action.LEFT else Action.RIGHT,
+                                if (successorIndex == 0) true else false)
+                        curLevel.add(tempState)
+                        numberOfStates++
+                    } else {
+                        val tempState: BeliefState = preLevel[previousIndexLevel].nextState(
+                                if (actionIndex == 0) Action.LEFT else Action.RIGHT,
+                                if (successorIndex == 0) true else false)
+                        curLevel.add(tempState)
+                        numberOfStates++
+                    }
+                }
+            }
+        }
+        mdpStates.add(curLevel)
+        preLevel = ArrayList()
+        for(state in 0..(curLevel.size-1)) {
+            preLevel.add(curLevel[state])
+        }
+    }
+
+    val valueIteration = ValueIteration()
+    valueIteration.doValueIteration(mdpStates, numberOfStates, states)
+    return states[mdp.startState]!!.utility
 }
 
-class ValueIteration(val mdp: MDP, val horizon: Int, val world: Simulator, val simulator: Simulator) {
+class ValueIteration() {
     /** the myth the legend value iteration~~~~*/
     fun doValueIteration(mdpStates: MutableList<MutableList<BeliefState>>, numberOfStates: Int,
                          states: MutableMap<BeliefState, BeliefState>): MutableMap<BeliefState, Action> {
@@ -46,12 +64,14 @@ class ValueIteration(val mdp: MDP, val horizon: Int, val world: Simulator, val s
 
         val policy: MutableMap<BeliefState, Action> = HashMap()
 
-        for (stateIndex in 0..(states.size - 1)) {
-            printValues(values)
-            valuesPrime[stateIndex] = maxActionSum(TODO())
+        for (level in (mdpStates.size)..0) {
+            for (stateIndex in 0..(mdpStates[level].size-1)) {
+                printValues(values)
+                valuesPrime[stateIndex] = maxActionSum(mdpStates[level][stateIndex])
+            }
         }
 
-        calculatePolicy(policy, values, states)
+        calculatePolicy(policy, values, states, mdpStates)
         return policy
     }
 
@@ -61,11 +81,15 @@ class ValueIteration(val mdp: MDP, val horizon: Int, val world: Simulator, val s
     }
 
     /** calculates optimal policy given the converged values*/
-    fun calculatePolicy(policy: MutableMap<BeliefState, Action>, values: MutableList<Double>, states: MutableMap<BeliefState, BeliefState>) {
-        for (stateIndex in 0..(states.size - 1)) {
-            val stateOptimalValue: MutableList<Double> = optimalMaxSum(states[])
-            val optimalAction: Int = optimalMaxAction(stateOptimalValue)
-            policy[stateIndex] = optimalAction
+    fun calculatePolicy(policy: MutableMap<BeliefState, Action>, values: MutableList<Double>,
+                        states: MutableMap<BeliefState, BeliefState>,
+                        mdpStates: MutableList<MutableList<BeliefState>>) {
+        for (level in 0..(mdpStates.size - 1)) {
+            for (stateIndex in 0..(mdpStates[level].size - 1)) {
+                val stateOptimalValue: MutableList<Double> = optimalMaxSum(states[mdpStates[level][stateIndex]], values)
+                val optimalAction: Int = optimalMaxAction(stateOptimalValue)
+                policy[mdpStates[level][stateIndex]] = if (optimalAction == 0) Action.LEFT else Action.RIGHT
+            }
         }
     }
 
@@ -87,17 +111,17 @@ class ValueIteration(val mdp: MDP, val horizon: Int, val world: Simulator, val s
     }
 
     /** calculate the vector of transition times optimal values only called after utilities have been updated*/
-    fun optimalMaxSum(state: BeliefState, values: MutableList<Double>, stateIndex: Int): MutableList<Double> {
+    fun optimalMaxSum(state: BeliefState?, values: MutableList<Double>): MutableList<Double> {
         val actionSum: MutableList<Double> = ArrayList(values.size)
 
         for (actionIndex in 0..(Action.Companion.getActions().size - 1)) {
             for (successorIndex in 0..1) {
                 if (successorIndex % 2 == 0) {
-                    val successorValue: Double = state.nextState(if (actionIndex == 0) Action.LEFT else Action.RIGHT,
+                    val successorValue: Double = state!!.nextState(if (actionIndex == 0) Action.LEFT else Action.RIGHT,
                             if (successorIndex == 0) true else false).utility
                     actionSum[actionIndex] += state.leftMean() * (successorValue + (if (successorIndex == 0) 1 else 0))
                 } else {
-                    val successorValue: Double = state.nextState(if (actionIndex == 0) Action.LEFT else Action.RIGHT,
+                    val successorValue: Double = state!!.nextState(if (actionIndex == 0) Action.LEFT else Action.RIGHT,
                             if (successorIndex == 0) true else false).utility
                     actionSum[actionIndex] += state.rightMean() * (successorValue + (if (successorIndex == 0) 1 else 0))
                 }
