@@ -30,10 +30,13 @@ data class BeliefState(val alphaLeft: Int, val betaLeft: Int, val alphaRight: In
 enum class Action {
     LEFT, RIGHT;
 
-    fun getActions() = listOf(LEFT, RIGHT)
+    companion object {
+        fun getActions(): List<Action> {
+            val availableActions = listOf(LEFT, RIGHT)
+            return availableActions
+        }
+    }
 }
-
-fun getActions() = Action.values()
 
 data class TransitionResult(val state: BeliefState, val reward: Int)
 
