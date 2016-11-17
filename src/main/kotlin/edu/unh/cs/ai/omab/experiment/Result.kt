@@ -1,5 +1,7 @@
 package edu.unh.cs.ai.omab.experiment
 
+import java.io.Writer
+
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
@@ -19,4 +21,10 @@ fun List<Result>.toJson(): String {
     forEach { jsonStringBuilder.append(it.toString()).append(",\n") }
     jsonStringBuilder.append("\n]")
     return jsonStringBuilder.toString()
+}
+
+fun List<Result>.toJson(writer: Writer) {
+    writer.append("[\n")
+    forEach { writer.append(it.toString()).append(",\n") }
+    writer.append("\n]")
 }
