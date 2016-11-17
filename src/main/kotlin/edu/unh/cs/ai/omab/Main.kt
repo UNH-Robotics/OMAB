@@ -55,6 +55,11 @@ fun main(args: Array<String>) {
         averageReward = evaluateAlgorithm(::expectationMaximization, horizon)
     }
     println("Expectation maximization regret: $averageReward executionTime:$executionTime[ms]")
+
+    executionTime = measureTimeMillis {
+        averageReward = evaluateAlgorithm(::valueIteration, horizon)
+    }
+
 }
 
 private fun evaluateAlgorithm(algorithm: (MDP, Int, Simulator, Simulator) -> Long, horizon: Int): Double {
