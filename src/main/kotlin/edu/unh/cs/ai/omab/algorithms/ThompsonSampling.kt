@@ -11,7 +11,7 @@ import java.util.stream.IntStream
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
-fun thompsonSampling(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Long {
+fun thompsonSampling(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
     val random = Random()
     var currentState = mdp.startState
 
@@ -31,5 +31,5 @@ fun thompsonSampling(mdp: MDP, horizon: Int, world: Simulator, simulator: Simula
         currentState = nextState
 
         reward.toLong()
-    }.sum()
+    }.sum().toDouble()
 }

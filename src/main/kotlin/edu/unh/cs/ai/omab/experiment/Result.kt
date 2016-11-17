@@ -4,7 +4,7 @@ package edu.unh.cs.ai.omab.experiment
  * @author Bence Cserna (bence@cserna.net)
  */
 data class Result(val algorithm: String,
-//                  val probabilities: List<Double>,
+                  val probabilities: List<Double>,
                   val optimalReward: Double,
                   val reward: Double,
                   val regret: Double) {
@@ -13,7 +13,7 @@ data class Result(val algorithm: String,
     }
 }
 
-fun List<Result>.toString(): String {
+fun List<Result>.toJson(): String {
     val jsonStringBuilder = StringBuilder()
     jsonStringBuilder.append("[\n")
     forEach { jsonStringBuilder.append(it.toString()).append(",\n") }

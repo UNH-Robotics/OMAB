@@ -8,7 +8,9 @@ import edu.unh.cs.ai.omab.domain.BanditSimulator
 import edu.unh.cs.ai.omab.domain.BanditWorld
 import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
+import edu.unh.cs.ai.omab.experiment.Result
 import java.lang.Math.max
+import java.util.*
 import java.util.stream.DoubleStream
 import kotlin.system.measureTimeMillis
 
@@ -37,27 +39,40 @@ fun main(args: Array<String>) {
 //        }
 //    }/10000.0}")
 //
+    val results: MutableList<Result> = ArrayList()
     executionTime = measureTimeMillis {
-    averageReward = evaluateAlgorithm(::uct, horizon)
+        averageReward = evaluateAlgorithm(
+                { probabilities, maximumReward, reward, regret -> results.add(Result("uct", probabilities, maximumReward, reward, regret)) },
+                ::uct, horizon)
     }
     println("UCT  regret: $averageReward executionTime:$executionTime[ms]")
     executionTime = measureTimeMillis {
-        averageReward = evaluateAlgorithm(::upperConfidenceBounds, horizon)
+        averageReward = evaluateAlgorithm(
+                { probabilities, maximumReward, reward, regret -> results.add(Result("ucb", probabilities, maximumReward, reward, regret)) },
+                ::upperConfidenceBounds, horizon)
     }
     println("UCB  regret: $averageReward executionTime:$executionTime[ms]")
 
     executionTime = measureTimeMillis {
-        averageReward = evaluateAlgorithm(::thompsonSampling, horizon)
+        averageReward = evaluateAlgorithm(
+                { probabilities, maximumReward, reward, regret -> results.add(Result("Thompson sampling", probabilities, maximumReward, reward, regret)) },
+                ::thompsonSampling, horizon)
     }
     println("Thompson sampling regret: $averageReward executionTime:$executionTime[ms]")
 
     executionTime = measureTimeMillis {
-        averageReward = evaluateAlgorithm(::expectationMaximization, horizon)
+        averageReward = evaluateAlgorithm(
+                { probabilities, maximumReward, reward, regret -> results.add(Result("Greedy", probabilities, maximumReward, reward, regret)) },
+                ::expectationMaximization, horizon)
     }
     println("Expectation maximization regret: $averageReward executionTime:$executionTime[ms]")
+
+    println(results.toString())
 }
 
-private fun evaluateAlgorithm(algorithm: (MDP, Int, Simulator, Simulator) -> Long, horizon: Int): Double {
+private fun evaluateAlgorithm(addResult: (probabilities: List<Double>, maximumReward: Double, reward: Double, regret: Double) -> Unit,
+                              algorithm: (MDP, Int, Simulator, Simulator) -> Double,
+                              horizon: Int): Double {
     val banditSimulator = BanditSimulator()
     val mdp = MDP()
     val averageReward = DoubleStream
@@ -70,7 +85,11 @@ private fun evaluateAlgorithm(algorithm: (MDP, Int, Simulator, Simulator) -> Lon
                         .limit(25)
                         .mapToLong { p2 ->
                             (0..50).map {
-                                max(p1, p2) * horizon - algorithm(mdp, horizon, BanditWorld(p1, p2), banditSimulator)
+                                val reward = algorithm(mdp, horizon, BanditWorld(p1, p2), banditSimulator)
+                                val maximumReward = max(p1, p2) * horizon
+                                val regret = maximumReward - reward
+                                addResult(listOf(p1, p2), maximumReward, reward, regret)
+                                regret
                             }.average().toLong()
                         }.average()
                         .orElseThrow { throw RuntimeException() }
