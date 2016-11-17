@@ -11,7 +11,7 @@ data class Result(val algorithm: String,
                   val reward: Double,
                   val regret: Double) {
     override fun toString(): String {
-        return "{ algorithm: \"$algorithm\", optimalReward: $optimalReward, reward: $reward, regret: $regret}"
+        return "{ \"algorithm\": \"$algorithm\", \"optimalReward\": $optimalReward, \"reward\": $reward, \"regret\": $regret}"
     }
 }
 
@@ -25,6 +25,9 @@ fun List<Result>.toJson(): String {
 
 fun List<Result>.toJson(writer: Writer) {
     writer.append("[\n")
-    forEach { writer.append(it.toString()).append(",\n") }
+    if (isNotEmpty()) {
+        take(size - 1).forEach { writer.append(it.toString()).append(",\n") }
+        writer.append(last().toString())
+    }
     writer.append("\n]")
 }

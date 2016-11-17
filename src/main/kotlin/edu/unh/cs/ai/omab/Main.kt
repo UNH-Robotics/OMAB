@@ -2,16 +2,18 @@ package edu.unh.cs.ai.omab
 
 import edu.unh.cs.ai.omab.algorithms.expectationMaximization
 import edu.unh.cs.ai.omab.algorithms.thompsonSampling
-import edu.unh.cs.ai.omab.algorithms.uct
 import edu.unh.cs.ai.omab.algorithms.upperConfidenceBounds
-import edu.unh.cs.ai.omab.domain.*
+import edu.unh.cs.ai.omab.domain.BanditSimulator
+import edu.unh.cs.ai.omab.domain.BanditWorld
+import edu.unh.cs.ai.omab.domain.MDP
+import edu.unh.cs.ai.omab.domain.Simulator
 import edu.unh.cs.ai.omab.experiment.Result
-import java.io.BufferedWriter
-import java.io.FileOutputStream
-import java.io.OutputStreamWriter
+import edu.unh.cs.ai.omab.experiment.toJson
+import java.io.File
 import java.lang.Math.max
 import java.util.*
 import java.util.stream.DoubleStream
+import kotlin.reflect.KFunction4
 import kotlin.system.measureTimeMillis
 
 
@@ -23,66 +25,36 @@ fun main(args: Array<String>) {
 
     val horizon = 10
 
-    var averageReward = 0.0
-    var executionTime: Long
+    val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
+    val mdp = MDP(100) // TODO Think about parallel access
 
-//    val mdp = MDP()
-//    mdp.generateStates(200)
-//    println("State count: ${mdp.count} map size: ${mdp.states.size}")
-
-//    return
-
-//    println("Time: ${measureTimeMillis {
-//        val random = Random()
-//        (0..10000).forEach {
-//            val leftBetaDistribution = BetaDistribution((it % 30 + 1).toDouble(), (it % 100 + 1).toDouble())
-//            val leftSample = leftBetaDistribution.inverseCumulativeProbability(random.nextDouble())
-//        }
-//    }/10000.0}")
-//
-    val results: MutableList<Result> = ArrayList()
-    executionTime = measureTimeMillis {
-        averageReward = evaluateAlgorithm(
-                { probabilities, maximumReward, reward, regret -> results.add(Result("uct", probabilities, maximumReward, reward, regret)) },
-                ::uct, horizon)
-    }
-    println("UCT  regret: $averageReward executionTime:$executionTime[ms]")
-    executionTime = measureTimeMillis {
-        averageReward = evaluateAlgorithm(
-                { probabilities, maximumReward, reward, regret -> results.add(Result("ucb", probabilities, maximumReward, reward, regret)) },
-                ::upperConfidenceBounds, horizon)
-    }
-    println("UCB  regret: $averageReward executionTime:$executionTime[ms]")
-
-    executionTime = measureTimeMillis {
-        averageReward = evaluateAlgorithm(
-                { probabilities, maximumReward, reward, regret -> results.add(Result("Thompson sampling", probabilities, maximumReward, reward, regret)) },
-                ::thompsonSampling, horizon)
-    }
-    println("Thompson sampling regret: $averageReward executionTime:$executionTime[ms]")
-
-    executionTime = measureTimeMillis {
-        averageReward = evaluateAlgorithm(
-                { probabilities, maximumReward, reward, regret -> results.add(Result("Greedy", probabilities, maximumReward, reward, regret)) },
-                ::expectationMaximization, horizon)
-    }
-    println("Expectation maximization regret: $averageReward executionTime:$executionTime[ms]")
+//    evaluateAlgorithm("UCT", ::uct, horizon, mdp, results)
+    evaluateAlgorithm("UCB", ::upperConfidenceBounds, horizon, mdp, results)
+    evaluateAlgorithm("Thompson Sampling", ::thompsonSampling, horizon, mdp, results)
+    evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, mdp, results)
 
     if (args.isEmpty()) {
         println(results.toString())
     } else {
-
-        Action.getActions()
-        BufferedWriter(OutputStreamWriter(FileOutputStream(args[0]), "utf-8"))
-                .use { writer -> writer.write("something") }
+        File(args[0]).bufferedWriter().use { results.toJson(it) }
     }
 }
 
-private fun evaluateAlgorithm(addResult: (probabilities: List<Double>, maximumReward: Double, reward: Double, regret: Double) -> Unit,
-                              algorithm: (MDP, Int, Simulator, Simulator) -> Double,
-                              horizon: Int): Double {
+private fun evaluateAlgorithm(algorithm: String, function: KFunction4<MDP, Int, Simulator, Simulator, Double>, horizon: Int, mdp: MDP, results: MutableList<Result>) {
+    var averageRegret = 0.0
+    val executionTime = measureTimeMillis {
+        averageRegret = executeAlgorithm(
+                { probabilities, maximumReward, reward, regret -> results.add(Result(algorithm, probabilities, maximumReward, reward, regret)) },
+                function, horizon, mdp)
+    }
+    println("$algorithm  regret: $averageRegret executionTime:$executionTime[ms]")
+}
+
+private fun executeAlgorithm(addResult: (probabilities: List<Double>, maximumReward: Double, reward: Double, regret: Double) -> Unit,
+                             algorithm: (MDP, Int, Simulator, Simulator) -> Double,
+                             horizon: Int,
+                             mdp: MDP): Double {
     val banditSimulator = BanditSimulator()
-    val mdp = MDP()
     val averageReward = DoubleStream
             .iterate(0.0, { i -> i + 0.04 })
             .limit(25)

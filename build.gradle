@@ -22,7 +22,7 @@ repositories {
     mavenCentral()
 }
 
-task run(type: JavaExec) {
+task execute(type: JavaExec) {
     main = 'edu.unh.cs.ai.omab.MainKt'
     def argList = ["results/result1.dat"]
 

@@ -40,8 +40,12 @@ enum class Action {
 
 data class TransitionResult(val state: BeliefState, val reward: Int)
 
-class MDP {
+class MDP() {
     val states: MutableMap<BeliefState, BeliefState> = HashMap()
+
+    constructor(depth: Int) : this() {
+        generateStates(depth)
+    }
 
     fun generateStates(depth: Int) {
         (1..depth).forEach { leftAlpha ->
