@@ -44,10 +44,10 @@ class MDP {
     val states: MutableMap<BeliefState, BeliefState> = HashMap()
 
     fun generateStates(depth: Int) {
-        (0..depth).forEach { leftAlpha ->
-            (0..(depth - leftAlpha)).forEach { leftBeta ->
-                (0..(depth - leftAlpha - leftBeta)).forEach { rightAlpha ->
-                    (0..(depth - leftAlpha - leftBeta - rightAlpha)).forEach { rightBeta ->
+        (1..depth).forEach { leftAlpha ->
+            (1..(depth - leftAlpha)).forEach { leftBeta ->
+                (1..(depth - leftAlpha - leftBeta)).forEach { rightAlpha ->
+                    (1..(depth - leftAlpha - leftBeta - rightAlpha)).forEach { rightBeta ->
                         val state = BeliefState(leftAlpha, leftBeta, rightAlpha, rightBeta)
                         if (states[state] == null) {
                             count++

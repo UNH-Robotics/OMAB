@@ -4,15 +4,16 @@ import edu.unh.cs.ai.omab.algorithms.expectationMaximization
 import edu.unh.cs.ai.omab.algorithms.thompsonSampling
 import edu.unh.cs.ai.omab.algorithms.uct
 import edu.unh.cs.ai.omab.algorithms.upperConfidenceBounds
-import edu.unh.cs.ai.omab.domain.BanditSimulator
-import edu.unh.cs.ai.omab.domain.BanditWorld
-import edu.unh.cs.ai.omab.domain.MDP
-import edu.unh.cs.ai.omab.domain.Simulator
+import edu.unh.cs.ai.omab.domain.*
 import edu.unh.cs.ai.omab.experiment.Result
+import java.io.BufferedWriter
+import java.io.FileOutputStream
+import java.io.OutputStreamWriter
 import java.lang.Math.max
 import java.util.*
 import java.util.stream.DoubleStream
 import kotlin.system.measureTimeMillis
+
 
 /**
  * @author Bence Cserna (bence@cserna.net)
@@ -67,7 +68,14 @@ fun main(args: Array<String>) {
     }
     println("Expectation maximization regret: $averageReward executionTime:$executionTime[ms]")
 
-    println(results.toString())
+    if (args.isEmpty()) {
+        println(results.toString())
+    } else {
+
+        Action.getActions()
+        BufferedWriter(OutputStreamWriter(FileOutputStream(args[0]), "utf-8"))
+                .use { writer -> writer.write("something") }
+    }
 }
 
 private fun evaluateAlgorithm(addResult: (probabilities: List<Double>, maximumReward: Double, reward: Double, regret: Double) -> Unit,
