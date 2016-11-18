@@ -25,9 +25,10 @@ fun main(args: Array<String>) {
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
     val mdp = MDP(horizon) // TODO Think about parallel access
 
-//    evaluateAlgorithm("OnlineValueIteration", ::onlineValueIteration, horizon, mdp, results)
+    evaluateAlgorithm("OnlineValueIteration", ::onlineValueIteration, horizon, mdp, results)
 
 //    evaluateAlgorithm("UCT", ::uct, horizon, mdp, results)
+
     evaluateAlgorithm("SimpleValueIteration", ::simpleValueIteration, horizon, mdp, results)
     evaluateAlgorithm("UCB", ::upperConfidenceBounds, horizon, mdp, results)
     evaluateAlgorithm("Thompson Sampling", ::thompsonSampling, horizon, mdp, results)
