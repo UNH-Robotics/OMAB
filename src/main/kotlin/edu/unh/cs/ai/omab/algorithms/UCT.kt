@@ -1,13 +1,19 @@
 package edu.unh.cs.ai.omab.algorithms
 
+import java.util.*
+import java.util.stream.IntStream
+
+import edu.unh.cs.ai.omab.experiment.TerminationChecker
+import edu.unh.cs.ai.omab.experiment.terminationCheckers.FakeTerminationChecker
+import edu.unh.cs.ai.omab.experiment.terminationCheckers.TimeTerminationChecker
+
+import edu.unh.cs.ai.omab.domain.MDP
+import edu.unh.cs.ai.omab.domain.Simulator
+import edu.unh.cs.ai.omab.domain.BeliefState
+
 import edu.unh.cs.ai.omab.domain.Action
 import edu.unh.cs.ai.omab.domain.Action.LEFT
 import edu.unh.cs.ai.omab.domain.Action.RIGHT
-import edu.unh.cs.ai.omab.domain.BeliefState
-import edu.unh.cs.ai.omab.domain.MDP
-import edu.unh.cs.ai.omab.domain.Simulator
-import java.util.*
-import java.util.stream.IntStream
 
 /**
  * Can apply UCT on any belief state given the current state and timestep
@@ -120,16 +126,15 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
     /**
      * Builds the UCT datastructure from root state assuming timestep
      */
-    private fun buildTree(rootState: BeliefState) {
+    private fun buildTree(rootState: BeliefState, terminationChecker: TerminationChecker) {
         assert(!hasReachedHorizon(0))
 
         // start empty
         graph.clear()
 
         var count = 0
-        while (count++ < numSimulations) {
+        while (count++ < numSimulations && !terminationChecker.reachedTermination()) {
             recurTreeSearch(rootState, 0)
-//            println("Root Q ${graph[rootState]}")
         }
     }
 
@@ -137,10 +142,10 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
      * Performs the actual tree search and returns the best action
      * See Kocsis, L., and Szepesvari, C. 2006 (Bandit Based Monte-Carlo Planning) for pseudo code
      */
-    fun selectAction(rootState: BeliefState, timestep: Int): Action {
+    fun selectAction(rootState: BeliefState, timestep: Int, terminationChecker: TerminationChecker): Action {
         currentTimeStep = timestep
 
-        buildTree(rootState)
+        buildTree(rootState, terminationChecker)
 
         val rootQNode = graph[rootState] ?:
                 throw RuntimeException("UCT did not create any Q values associated with the rootState")
@@ -152,18 +157,22 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
 /**
  * Applies UCT on the provided MDP
  * @TODO Currently will apply search all the way to the horizon, may make use of a max depth in future
+ *
+ * @TODO: somehow add as parameter to the algorithm 
+ * fun uct(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator, terminationChecker: TerminationChecker): Double {
  */
 fun uct(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
 
-    // @TODO: get some actual way of determine when to terminate UCT
-    val numSimulations = 100
+    val terminationChecker = TimeTerminationChecker(10000)
+    val numSimulations = 1000
 
     var currentState = mdp.startState
     val planner = UCTPlanner(simulator, numSimulations, horizon)
 
     return IntStream.iterate(0, { t -> t + 1 }).limit(horizon.toLong()).mapToLong {
         // select action
-        val action = planner.selectAction(currentState, it)
+        terminationChecker.init()
+        val action = planner.selectAction(currentState, it, terminationChecker)
 
         // apply action
         val (nextState, reward) = if (action == LEFT) {
