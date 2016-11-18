@@ -51,10 +51,8 @@ fun bellmanUtilityUpdate(state: BeliefState, mdp: MDP) {
 
 fun onlineValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
     val lookAhead: Int = 10
-    val onlineMDP = MDP(horizon * 2)
+    val onlineMDP = MDP(horizon+lookAhead)
 
-    var cumulativeReward: Double = 0.0
-    var expectedReward: Double = 0.0
     var currentState: BeliefState = onlineMDP.startState
 
     val addStartState = ArrayList<BeliefState>()
@@ -63,15 +61,12 @@ fun onlineValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Si
 
 
     return IntStream.range(0, horizon).mapToDouble {
-        val executionTime = measureTimeMillis {
-            (1..(lookAhead)).forEach {
-                val generatedDepthStates: ArrayList<BeliefState> = mdp.generateStates(it, currentState)
-                onlineMDP.addStates(generatedDepthStates)
-            }
+        (1..(lookAhead)).forEach {
+            val generatedDepthStates: ArrayList<BeliefState> = mdp.generateStates(it, currentState)
+            onlineMDP.addStates(generatedDepthStates)
         }
-        println("look ahead executionTime $executionTime")
 
-        (horizon -1 downTo 0).forEach {
+        (horizon - 1 downTo 0).forEach {
             mdp.getStates(it).forEach { bellmanUtilityUpdate(it, onlineMDP) }
         }
 
@@ -85,15 +80,22 @@ fun onlineValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Si
 
 fun simpleValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
 
-    // Back up values
-    (horizon - 1 downTo 0).forEach {
-        mdp.getStates(it).forEach { bellmanUtilityUpdate(it, mdp) }
+    val localMDP = MDP(horizon)
+
+    (0..horizon).forEach {
+        val genereatedDepthStates: ArrayList<BeliefState> = localMDP.generateStates(it, localMDP.startState)
+        localMDP.addStates(genereatedDepthStates)
     }
 
-    var currentState = mdp.startState
+    // Back up values
+    (horizon - 1 downTo 0).forEach {
+        localMDP.getStates(it).forEach { bellmanUtilityUpdate(it, localMDP) }
+    }
+
+    var currentState = localMDP.startState
     return IntStream.range(0, horizon).mapToDouble {
         // Select action based on the policy
-        val (bestAction, qValue) = selectBestAction(currentState, mdp)
+        val (bestAction, qValue) = selectBestAction(currentState, localMDP)
 
         val (nextState, reward) = world.transition(currentState, bestAction)
         currentState = nextState
