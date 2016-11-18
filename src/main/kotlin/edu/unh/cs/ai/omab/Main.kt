@@ -1,10 +1,6 @@
 package edu.unh.cs.ai.omab
 
 import edu.unh.cs.ai.omab.algorithms.*
-import edu.unh.cs.ai.omab.algorithms.expectationMaximization
-import edu.unh.cs.ai.omab.algorithms.simpleValueIteration
-import edu.unh.cs.ai.omab.algorithms.thompsonSampling
-import edu.unh.cs.ai.omab.algorithms.upperConfidenceBounds
 import edu.unh.cs.ai.omab.domain.BanditSimulator
 import edu.unh.cs.ai.omab.domain.BanditWorld
 import edu.unh.cs.ai.omab.domain.MDP
@@ -25,14 +21,14 @@ import kotlin.system.measureTimeMillis
 fun main(args: Array<String>) {
     println("OMAB!")
 
-    val horizon = 20
+    val horizon = 100
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
     val mdp = MDP(horizon) // TODO Think about parallel access
 
     evaluateAlgorithm("OnlineValueIteration", ::onlineValueIteration, horizon, mdp, results)
 
 //    evaluateAlgorithm("UCT", ::uct, horizon, mdp, results)
-    evaluateAlgorithm("SimpleValueIteration", ::simpleValueIteration, horizon, mdp, results)
+//    evaluateAlgorithm("SimpleValueIteration", ::simpleValueIteration, horizon, mdp, results)
     evaluateAlgorithm("UCB", ::upperConfidenceBounds, horizon, mdp, results)
     evaluateAlgorithm("Thompson Sampling", ::thompsonSampling, horizon, mdp, results)
     evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, mdp, results)
