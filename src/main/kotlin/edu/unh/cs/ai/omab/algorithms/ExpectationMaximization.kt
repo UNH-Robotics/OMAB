@@ -9,7 +9,7 @@ import java.util.stream.IntStream
 fun expectationMaximization(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
     var currentState = mdp.startState
 
-    return IntStream.iterate(0, { i -> i + 1 }).limit(horizon.toLong()).mapToLong {
+    return IntStream.iterate(0, { i -> i + 1 }).limit(horizon.toLong()).mapToDouble {
         val (nextState, reward) = if (currentState.leftMean() > currentState.rightMean()) {
             world.transition(currentState, Action.LEFT)
         } else {
@@ -18,6 +18,6 @@ fun expectationMaximization(mdp: MDP, horizon: Int, world: Simulator, simulator:
 
         currentState = nextState
 
-        reward.toLong()
-    }.sum().toDouble()
+        reward
+    }.sum()
 }

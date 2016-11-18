@@ -161,7 +161,7 @@ fun uct(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double 
     var currentState = mdp.startState
     val planner = UCTPlanner(simulator, numSimulations, horizon)
 
-    return IntStream.iterate(0, { t -> t + 1 }).limit(horizon.toLong()).mapToLong {
+    return IntStream.iterate(0, { t -> t + 1 }).limit(horizon.toLong()).mapToDouble {
         // select action
         val action = planner.selectAction(currentState, it)
 
@@ -176,6 +176,6 @@ fun uct(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double 
 
         currentState = nextState
 
-        reward.toLong()
-    }.sum().toDouble()
+        reward
+    }.sum()
 }

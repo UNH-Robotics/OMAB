@@ -52,8 +52,6 @@ enum class Action {
     }
 }
 
-data class TransitionResult(val state: BeliefState, val reward: Int)
-
 class MDP(depth: Int? = null) {
     val states: MutableMap<BeliefState, BeliefState> = HashMap()
     private val mapsByLevel: Array<MutableMap<BeliefState, BeliefState>>
@@ -115,39 +113,42 @@ class MDP(depth: Int? = null) {
     var count = 0
 }
 
-abstract class Simulator() {
-    val random = Random()
-    fun bernoulli(probability: Double): Boolean = random.nextDouble() <= probability
-    abstract fun transition(state: BeliefState, action: Action): TransitionResult
+fun calculateQ(state: BeliefState, action: Action, mdp: MDP): Double {
+    val successProbabily = state.actionMean(action)
+    val failProbability = 1 - successProbabily
+
+    val successState = state.nextState(action, true)
+    val failState = state.nextState(action, false)
+
+    val successorLevel = state.totalSum() - 4 + 1// 4 is the sum of priors for 2 arms
+    val successMdpState = mdp.getLookupState(successorLevel, successState)
+    val failMdpState = mdp.getLookupState(successorLevel, failState)
+
+    // Calculate the probability weighed future utility
+    val expectedValueOfSuccess = successProbabily * (successMdpState.utility + Action.getReward(action))
+    val expectedValueOfFailure = failProbability * failMdpState.utility
+    return expectedValueOfSuccess + expectedValueOfFailure
 }
 
-class BanditSimulator() : Simulator() {
-    override fun transition(state: BeliefState, action: Action): TransitionResult {
-        return when (action) {
-            LEFT -> {
-                val success = bernoulli(state.leftMean())
-                TransitionResult(state.nextState(LEFT, success), if (success) 1 else 0)
-            }
-            RIGHT -> {
-                val success = bernoulli(state.rightMean())
-                TransitionResult(state.nextState(RIGHT, success), if (success) 1 else 0)
-            }
+fun selectBestAction(state: BeliefState, mdp: MDP): Pair<Action, Double> {
+    var bestAction: Action? = null
+    var bestQValue = Double.NEGATIVE_INFINITY
+
+    Action.getActions().forEach {
+        val qValue = calculateQ(state, it, mdp)
+        if (qValue > bestQValue) {
+            bestAction = it
+            bestQValue = qValue
         }
     }
+
+    return Pair(bestAction!!, bestQValue)
 }
 
-class BanditWorld(val leftProbability: Double, val rightProbability: Double) : Simulator() {
-    override fun transition(state: BeliefState, action: Action): TransitionResult {
-        return when (action) {
-            LEFT -> {
-                val success = bernoulli(leftProbability)
-                TransitionResult(state.nextState(LEFT, success), if (success) 1 else 0)
-            }
-            RIGHT -> {
-                val success = bernoulli(rightProbability)
-                TransitionResult(state.nextState(RIGHT, success), if (success) 1 else 0)
-            }
-        }
-    }
+fun bellmanUtilityUpdate(state: BeliefState, mdp: MDP) {
+    val (action, qValue) = selectBestAction(state, mdp)
+    state.utility = qValue
 }
+
+
 
