@@ -13,7 +13,8 @@ class Rtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, val
         if (currentDepth >= horizon) return
 
         if (!graph.containsKey(currentState)) graph.put(currentState, currentState)
-        mdp.addStates(mdp.generateStates(1, currentState))
+        val statesToAdd = mdp.generateStates(1, currentState)
+        mdp.addStates(statesToAdd)
         val stack = Stack<BeliefState>()
 
         (currentDepth..horizon).forEach {
@@ -32,14 +33,12 @@ class Rtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, val
     }
 
     fun simulate(currentState: BeliefState, currentDepth: Int) {
-        (0..simulationCount).forEach { rollOut(currentState, horizon) }
-
-        throw UnsupportedOperationException("not implemented")
+        (0..simulationCount).forEach { rollOut(currentState, currentDepth) }
     }
 }
 
 fun rtdp(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
-    var localMDP = MDP(horizon + 1)
+    val localMDP = MDP(horizon + 1)
     val simulationCount = 200
     var currentState = localMDP.startState
 
