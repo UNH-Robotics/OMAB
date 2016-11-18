@@ -18,7 +18,7 @@ fun calculateQ(state: BeliefState, action: Action, mdp: MDP): Double {
     val successState = state.nextState(action, true)
     val failState = state.nextState(action, false)
 
-    val successorLevel = state.totalSum() - 4  + 1// 4 is the sum of priors for 2 arms
+    val successorLevel = state.totalSum() - 4 + 1// 4 is the sum of priors for 2 arms
     val successMdpState = mdp.getLookupState(successorLevel, successState)
     val failMdpState = mdp.getLookupState(successorLevel, failState)
 
@@ -50,16 +50,21 @@ fun bellmanUtilityUpdate(state: BeliefState, mdp: MDP) {
 
 fun onlineValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator) : Double {
     val lookAhead: Int = 10
-    val onlineMDP = MDP(0)
+    val onlineMDP = MDP(horizon)
 
     var cumulativeReward: Double = 0.0
     var expectedReward: Double = 0.0
     var currentState: BeliefState = onlineMDP.startState
 
+    val addStartState = ArrayList<BeliefState>()
+    addStartState.add(currentState)
+    onlineMDP.addStates(addStartState)
+
+
     (1..(horizon-1)).forEach {
         (1..(lookAhead)).forEach {
             val generatedDepthStates: ArrayList<BeliefState> = mdp.generateStates(it, currentState)
-            onlineMDP.addStates(it, generatedDepthStates)
+            onlineMDP.addStates(generatedDepthStates)
         }
         expectedReward += simpleValueIteration(onlineMDP,lookAhead,world,simulator)
 
@@ -76,7 +81,6 @@ fun simpleValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Si
 
     // Back up values
     (horizon - 1 downTo 0).forEach {
-        println(it)
         mdp.getStates(it).forEach { bellmanUtilityUpdate(it, mdp) }
     }
 

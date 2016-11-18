@@ -64,16 +64,15 @@ class MDP(depth: Int? = null) {
     init {
         mapsByLevel = Array<MutableMap<BeliefState, BeliefState>>(depth?.plus(1) ?: 0, { HashMap<BeliefState, BeliefState>() })
         statesByLevel = Array<MutableList<BeliefState>>(depth?.plus(1) ?: 0, { ArrayList<BeliefState>() })
-        if (depth != null) {
-            generateStates(depth)
-        }
     }
 
 
-    fun addStates(level: Int, statesToAdd: ArrayList<BeliefState>) {
+    fun addStates(statesToAdd: ArrayList<BeliefState>) {
         statesToAdd.forEach {
+            val level = it.alphaLeft + it.betaLeft + it.alphaRight + it.betaRight - 4
             mapsByLevel[level][it] = it
             statesByLevel[level].add(it)
+            states[it] = it
         }
     }
 
