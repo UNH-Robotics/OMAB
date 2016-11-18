@@ -6,6 +6,7 @@ import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
 import java.util.*
 import java.util.stream.IntStream
+import kotlin.system.measureTimeMillis
 
 /**
  * @author Bence Cserna (bence@cserna.net)
@@ -48,9 +49,9 @@ fun bellmanUtilityUpdate(state: BeliefState, mdp: MDP) {
     state.utility = qValue
 }
 
-fun onlineValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator) : Double {
-    val lookAhead: Int = 1
-    val onlineMDP = MDP(horizon*2)
+fun onlineValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
+    val lookAhead: Int = 10
+    val onlineMDP = MDP(horizon * 2)
 
     var cumulativeReward: Double = 0.0
     var expectedReward: Double = 0.0
@@ -61,20 +62,25 @@ fun onlineValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Si
     onlineMDP.addStates(addStartState)
 
 
-    (1..(horizon)).forEach {
-        (1..(lookAhead)).forEach {
-            val generatedDepthStates: ArrayList<BeliefState> = mdp.generateStates(it, currentState)
-            onlineMDP.addStates(generatedDepthStates)
+    return IntStream.range(0, horizon).mapToDouble {
+        val executionTime = measureTimeMillis {
+            (1..(lookAhead)).forEach {
+                val generatedDepthStates: ArrayList<BeliefState> = mdp.generateStates(it, currentState)
+                onlineMDP.addStates(generatedDepthStates)
+            }
         }
-        expectedReward += simpleValueIteration(onlineMDP,lookAhead,world,simulator)
+        println("look ahead executionTime $executionTime")
+
+        (horizon -1 downTo 0).forEach {
+            mdp.getStates(it).forEach { bellmanUtilityUpdate(it, onlineMDP) }
+        }
 
         val (bestAction, qValue) = selectBestAction(currentState, onlineMDP)
         val (nextState, reward) = world.transition(currentState, bestAction)
         currentState = nextState
-        cumulativeReward += reward
-    }
+        reward.toDouble()
+    }.sum()
 
-   return expectedReward
 }
 
 fun simpleValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {

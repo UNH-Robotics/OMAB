@@ -25,15 +25,15 @@ import kotlin.system.measureTimeMillis
 fun main(args: Array<String>) {
     println("OMAB!")
 
-    val horizon = 3
+    val horizon = 10
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
     val mdp = MDP(horizon) // TODO Think about parallel access
     val deepMDP = MDP(100)
 
-    evaluateAlgorithm("OnlineValueIteration", ::onlineValueIteration, 10, deepMDP, results)
+    evaluateAlgorithm("OnlineValueIteration", ::onlineValueIteration, 100, deepMDP, results)
 
 //    evaluateAlgorithm("UCT", ::uct, horizon, mdp, results)
-    evaluateAlgorithm("SimpleValueIteration", ::simpleValueIteration, horizon, mdp, results)
+//    evaluateAlgorithm("SimpleValueIteration", ::simpleValueIteration, horizon, mdp, results)
     evaluateAlgorithm("UCB", ::upperConfidenceBounds, horizon, mdp, results)
     evaluateAlgorithm("Thompson Sampling", ::thompsonSampling, horizon, mdp, results)
     evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, mdp, results)
