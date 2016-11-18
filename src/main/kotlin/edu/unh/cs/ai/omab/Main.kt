@@ -1,11 +1,6 @@
 package edu.unh.cs.ai.omab
 
-import edu.unh.cs.ai.omab.algorithms.expectationMaximization
-import edu.unh.cs.ai.omab.algorithms.simpleValueIteration
-import edu.unh.cs.ai.omab.algorithms.rtdp
-import edu.unh.cs.ai.omab.algorithms.thompsonSampling
-import edu.unh.cs.ai.omab.algorithms.upperConfidenceBounds
-import edu.unh.cs.ai.omab.algorithms.valueIteration
+import edu.unh.cs.ai.omab.algorithms.*
 import edu.unh.cs.ai.omab.domain.*
 import edu.unh.cs.ai.omab.experiment.Result
 import edu.unh.cs.ai.omab.experiment.toJson
@@ -26,6 +21,9 @@ fun main(args: Array<String>) {
     val horizon = 3
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
     val mdp = MDP(horizon) // TODO Think about parallel access
+    val deepMDP = MDP(100)
+
+    evaluateAlgorithm("OnlineValueIteration", ::onlineValueIteration, 100, deepMDP, results)
 
 //    evaluateAlgorithm("UCT", ::uct, horizon, mdp, results)
     evaluateAlgorithm("SimpleValueIteration", ::simpleValueIteration, horizon, mdp, results)

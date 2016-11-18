@@ -4,6 +4,7 @@ import edu.unh.cs.ai.omab.domain.Action
 import edu.unh.cs.ai.omab.domain.BeliefState
 import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
+import java.util.*
 import java.util.stream.IntStream
 
 /**
@@ -47,10 +48,35 @@ fun bellmanUtilityUpdate(state: BeliefState, mdp: MDP) {
     state.utility = qValue
 }
 
+fun onlineValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator) : Double {
+    val lookAhead: Int = 10
+    val onlineMDP = MDP(0)
+
+    var cumulativeReward: Double = 0.0
+    var expectedReward: Double = 0.0
+    var currentState: BeliefState = onlineMDP.startState
+
+    (1..(horizon-1)).forEach {
+        (0..(lookAhead)).forEach {
+            val generatedDepthStates: ArrayList<BeliefState> = mdp.generateStates(it, currentState)
+            mdp.addStates(it, generatedDepthStates)
+        }
+        expectedReward += simpleValueIteration(onlineMDP,lookAhead,world,simulator)
+
+        val (bestAction, qValue) = selectBestAction(currentState, mdp)
+        val (nextState, reward) = world.transition(currentState, bestAction)
+        currentState = nextState
+        cumulativeReward += reward
+    }
+
+   return expectedReward
+}
+
 fun simpleValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
 
     // Back up values
     (horizon - 1 downTo 0).forEach {
+        println(it)
         mdp.getStates(it).forEach { bellmanUtilityUpdate(it, mdp) }
     }
 
