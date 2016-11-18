@@ -9,7 +9,7 @@ import java.util.*
  */
 
 data class BeliefState(val alphaLeft: Int, val betaLeft: Int, val alphaRight: Int, val betaRight: Int) {
-    var utility = 0.0
+    var utility = 1000.0
 
     fun leftSum() = alphaLeft + betaLeft
     fun rightSum() = alphaRight + betaRight
