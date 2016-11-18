@@ -4,6 +4,8 @@ import edu.unh.cs.ai.omab.domain.Action
 import edu.unh.cs.ai.omab.domain.BeliefState
 import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
+import java.lang.Math.sqrt
+import java.lang.Math.pow
 import java.util.*
 import java.util.stream.IntStream
 import kotlin.system.measureTimeMillis
@@ -51,11 +53,11 @@ fun bellmanUtilityUpdate(state: BeliefState, mdp: MDP) {
 
 fun onlineValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
     val lookAhead: Int = 10
-    val onlineMDP = MDP(horizon+lookAhead)
+    val onlineMDP: MDP = MDP(horizon + lookAhead)
 
     var currentState: BeliefState = onlineMDP.startState
 
-    val addStartState = ArrayList<BeliefState>()
+    val addStartState: ArrayList<BeliefState> = ArrayList<BeliefState>()
     addStartState.add(currentState)
     onlineMDP.addStates(addStartState)
 
@@ -75,7 +77,16 @@ fun onlineValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Si
         currentState = nextState
         reward.toDouble()
     }.sum()
+}
 
+fun calculateLookAhead(mdp: MDP, horizon: Int, world: Simulator,
+                       simulator: Simulator, numberOfStates: Double): Double {
+
+    val numberOfStatesGivenDepth =  (6.0*numberOfStates + 11.0 * (numberOfStates * numberOfStates) +
+            6 * (numberOfStates * numberOfStates * numberOfStates) +
+            (numberOfStates * numberOfStates * numberOfStates * numberOfStates))/24
+    val depthGivenStates: Int = (1 / 2 * (-3 + sqrt(5 - 4 * (sqrt(24 * numberOfStates.toDouble() + 1))))).toInt()
+    return numberOfStatesGivenDepth
 }
 
 fun simpleValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
