@@ -8,7 +8,8 @@ import java.util.stream.IntStream
  * @author Bence Cserna (bence@cserna.net)
  */
 fun onlineValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
-    val lookAhead: Int = 20
+    val lookAhead: Int = 10
+    var realHorizon = horizon
     val onlineMDP = MDP(horizon+lookAhead)
 
     var currentState: BeliefState = onlineMDP.startState
@@ -17,21 +18,20 @@ fun onlineValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Si
     addStartState.add(currentState)
     onlineMDP.addStates(addStartState)
 
-
-    return IntStream.range(0, horizon).mapToDouble {
+    return IntStream.range(0, realHorizon).mapToDouble {
         (1..(lookAhead)).forEach {
             val generatedDepthStates: ArrayList<BeliefState> = mdp.generateStates(it, currentState)
             onlineMDP.addStates(generatedDepthStates)
         }
 
-        (horizon - 1 downTo 0).forEach {
+        (lookAhead - 1 downTo 0).forEach {
             mdp.getStates(it).forEach { bellmanUtilityUpdate(it, onlineMDP) }
         }
-
+        realHorizon -= lookAhead
         val (bestAction, qValue) = selectBestAction(currentState, onlineMDP)
         val (nextState, reward) = world.transition(currentState, bestAction)
         currentState = nextState
-        reward.toDouble()
+        reward
     }.sum()
 
 }
@@ -58,7 +58,7 @@ fun simpleValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Si
         val (nextState, reward) = world.transition(currentState, bestAction)
         currentState = nextState
 
-        reward.toDouble()
+        reward
     }.sum()
 
 }

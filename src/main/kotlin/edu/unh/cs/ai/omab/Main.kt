@@ -21,7 +21,7 @@ import kotlin.system.measureTimeMillis
 fun main(args: Array<String>) {
     println("OMAB!")
 
-    val horizon = 20
+    val horizon = 50
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
     val mdp = MDP(horizon) // TODO Think about parallel access
 
@@ -33,7 +33,7 @@ fun main(args: Array<String>) {
     evaluateAlgorithm("UCB", ::upperConfidenceBounds, horizon, mdp, results)
     evaluateAlgorithm("Thompson Sampling", ::thompsonSampling, horizon, mdp, results)
     evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, mdp, results)
-    evaluateAlgorithm("RTDP", ::rtdp, horizon, mdp, results)
+//    evaluateAlgorithm("RTDP", ::rtdp, horizon, mdp, results)
 
     if (args.isNotEmpty()) {
         File(args[0]).bufferedWriter().use { results.toJson(it) }
