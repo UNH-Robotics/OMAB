@@ -57,9 +57,9 @@ fun onlineValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Si
     var currentState: BeliefState = onlineMDP.startState
 
     (1..(horizon-1)).forEach {
-        (0..(lookAhead)).forEach {
+        (1..(lookAhead)).forEach {
             val generatedDepthStates: ArrayList<BeliefState> = mdp.generateStates(it, currentState)
-            mdp.addStates(it, generatedDepthStates)
+            onlineMDP.addStates(it, generatedDepthStates)
         }
         expectedReward += simpleValueIteration(onlineMDP,lookAhead,world,simulator)
 

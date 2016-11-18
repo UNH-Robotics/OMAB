@@ -1,7 +1,14 @@
 package edu.unh.cs.ai.omab
 
 import edu.unh.cs.ai.omab.algorithms.*
-import edu.unh.cs.ai.omab.domain.*
+import edu.unh.cs.ai.omab.algorithms.expectationMaximization
+import edu.unh.cs.ai.omab.algorithms.simpleValueIteration
+import edu.unh.cs.ai.omab.algorithms.thompsonSampling
+import edu.unh.cs.ai.omab.algorithms.upperConfidenceBounds
+import edu.unh.cs.ai.omab.domain.BanditSimulator
+import edu.unh.cs.ai.omab.domain.BanditWorld
+import edu.unh.cs.ai.omab.domain.MDP
+import edu.unh.cs.ai.omab.domain.Simulator
 import edu.unh.cs.ai.omab.experiment.Result
 import edu.unh.cs.ai.omab.experiment.toJson
 import java.io.File
@@ -30,8 +37,6 @@ fun main(args: Array<String>) {
     evaluateAlgorithm("UCB", ::upperConfidenceBounds, horizon, mdp, results)
     evaluateAlgorithm("Thompson Sampling", ::thompsonSampling, horizon, mdp, results)
     evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, mdp, results)
-//    evaluateAlgorithm("Value Iteration", ::valueIteration, horizon, mdp, results)
-
 //    evaluateAlgorithm("Value Iteration", ::valueIteration, horizon, mdp, results)
 //    evaluateAlgorithm("RTDP", ::rtdp, horizon, mdp, results)
 
