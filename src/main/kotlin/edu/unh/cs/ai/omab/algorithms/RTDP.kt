@@ -52,7 +52,7 @@ fun rtdp(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double
         val (bestAction, bestReward) = selectBestAction(currentState, localMDP)
         val (nextState, reward) = world.transition(currentState, bestAction)
         currentState = nextState
-        reward.toDouble()
+        reward
     }.sum()
 
     return totalReward

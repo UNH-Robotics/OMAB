@@ -52,8 +52,6 @@ enum class Action {
     }
 }
 
-data class TransitionResult(val state: BeliefState, val reward: Int)
-
 class MDP(depth: Int? = null) {
     val states: MutableMap<BeliefState, BeliefState> = HashMap()
     private val mapsByLevel: Array<MutableMap<BeliefState, BeliefState>>

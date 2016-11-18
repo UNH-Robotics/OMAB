@@ -7,9 +7,6 @@ import java.util.stream.IntStream
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
-
-
-
 fun onlineValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
     val lookAhead: Int = 20
     val onlineMDP = MDP(horizon+lookAhead)
