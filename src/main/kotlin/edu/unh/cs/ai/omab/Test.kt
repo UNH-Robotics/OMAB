@@ -14,15 +14,6 @@ fun main(args: Array<String>) {
 
 
     unitTest(mdp, horizon, BanditWorld(0.5, 0.6), banditSimulator, 1.0)
-    unitTest(mdp, horizon, BanditWorld(0.5, 0.6), banditSimulator, 2.0)
-    unitTest(mdp, horizon, BanditWorld(0.5, 0.6), banditSimulator, 3.0)
-    unitTest(mdp, horizon, BanditWorld(0.5, 0.6), banditSimulator, 4.0)
-    unitTest(mdp, horizon, BanditWorld(0.5, 0.6), banditSimulator, 6.0)
-    unitTest(mdp, horizon, BanditWorld(0.5, 0.6), banditSimulator, 7.0)
-    unitTest(mdp, horizon, BanditWorld(0.5, 0.6), banditSimulator, 8.0)
-    unitTest(mdp, horizon, BanditWorld(0.5, 0.6), banditSimulator, 9.0)
-    unitTest(mdp, horizon, BanditWorld(0.5, 0.6), banditSimulator, 10.0)
-    unitTest(mdp, horizon, BanditWorld(0.5, 0.6), banditSimulator, 11.0)
 }
 
 private fun unitTest(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator, numberOfStates: Double) {

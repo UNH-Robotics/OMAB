@@ -80,13 +80,19 @@ fun bellmanUtilityUpdate(state: BeliefState, mdp: MDP) {
 //}
 
 fun calculateLookAhead(mdp: MDP, horizon: Int, world: Simulator,
-                       simulator: Simulator, numberOfStates: Double): Double {
+                       simulator: Simulator, numberOfStates: Double): HashMap<Int,Int> {
 
-    val numberOfStatesGivenDepth =  (6.0*numberOfStates + 11.0 * (numberOfStates * numberOfStates) +
-            6 * (numberOfStates * numberOfStates * numberOfStates) +
-            (numberOfStates * numberOfStates * numberOfStates * numberOfStates))/24
-    val depthGivenStates: Int = (1 / 2 * (-3 + sqrt(5 - 4 * (sqrt(24 * numberOfStates.toDouble() + 1))))).toInt()
-    return numberOfStatesGivenDepth
+    val stateNumberToDepth = HashMap<Int, Int>()
+
+    (0..horizon).forEach {
+        val numberOfStatesGivenDepth =  (6.0* it + 11.0 * (it * it) +
+                6 * (it * it * it) +
+                (it * it * it * it))/24
+        stateNumberToDepth[numberOfStatesGivenDepth.toInt()] = it
+    }
+
+
+    return stateNumberToDepth
 }
 
 //fun simpleValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {

@@ -22,7 +22,7 @@ fun main(args: Array<String>) {
     println("OMAB!")
 
 
-    val horizon = 100
+    val horizon = 20
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
     val mdp = MDP(horizon) // TODO Think about parallel access
 
