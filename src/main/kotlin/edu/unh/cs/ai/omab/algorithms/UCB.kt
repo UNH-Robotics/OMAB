@@ -14,9 +14,9 @@ import kotlin.Double.Companion.POSITIVE_INFINITY
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
-fun upperConfidenceBounds(horizon: Int, world: Simulator, simulator: Simulator): List<Double> {
+fun upperConfidenceBounds(horizon: Int, world: Simulator): List<Double> {
     var currentState: BeliefState = MDP().startState
-    var averageRewards: MutableList<Double> = ArrayList(horizon)
+    val averageRewards: MutableList<Double> = ArrayList(horizon)
     var sum = 0.0
 
     (0..horizon - 1).forEach { level ->
@@ -46,7 +46,7 @@ fun executeUcb(horizon: Int, world: Simulator, simulator: Simulator, probabiliti
     val expectedMaxReward = probabilities.max()!!
 
     val rewardsList = IntStream.range(0, iterations).mapToObj {
-        upperConfidenceBounds(horizon, world, simulator)
+        upperConfidenceBounds(horizon, world)
     }
 
     val sumOfRewards = DoubleArray(horizon)

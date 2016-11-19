@@ -30,7 +30,7 @@ def regret_plot(data):
 
     frame = DataFrame(np.asarray(values).T, columns=list(regret_series.index))
     print(frame)
-    plt.figure()
+    # plt.figure()
     frame.plot()
     plt.show()
 

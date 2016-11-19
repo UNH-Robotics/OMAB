@@ -1,6 +1,6 @@
 package edu.unh.cs.ai.omab
 
-import edu.unh.cs.ai.omab.algorithms.executeRtdp
+import edu.unh.cs.ai.omab.algorithms.executeThompsonSampling
 import edu.unh.cs.ai.omab.algorithms.executeUcb
 import edu.unh.cs.ai.omab.algorithms.executeValueIteration
 import edu.unh.cs.ai.omab.domain.BanditSimulator
@@ -22,7 +22,7 @@ fun main(args: Array<String>) {
     println("OMAB!")
 
     val horizon = 100
-    val iterations = 100
+    val iterations = 200
 
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
 
@@ -32,9 +32,9 @@ fun main(args: Array<String>) {
 
     evaluateAlgorithm("ValueIteration", ::executeValueIteration, horizon, results, iterations)
     evaluateAlgorithm("UCB", ::executeUcb, horizon, results, iterations)
-//    evaluateAlgorithm("Thompson Sampling", ::thompsonSampling, horizon, results)
+    evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, horizon, results, iterations)
 //    evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, results)
-    evaluateAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations)
+//    evaluateAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations)
 
     if (args.isNotEmpty()) {
         File(args[0]).bufferedWriter().use { results.toJson(it) }
