@@ -2,6 +2,7 @@ package edu.unh.cs.ai.omab
 
 import edu.unh.cs.ai.omab.algorithms.executeRtdp
 import edu.unh.cs.ai.omab.algorithms.executeUcb
+import edu.unh.cs.ai.omab.algorithms.executeValueIteration
 import edu.unh.cs.ai.omab.domain.BanditSimulator
 import edu.unh.cs.ai.omab.domain.BanditWorld
 import edu.unh.cs.ai.omab.domain.Simulator
@@ -13,24 +14,27 @@ import java.util.stream.DoubleStream
 import kotlin.system.measureTimeMillis
 
 
+
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
 fun main(args: Array<String>) {
     println("OMAB!")
 
-    val horizon = 20
+    val horizon = 100
+    val iterations = 100
+
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
 
 //    evaluateAlgorithm("OnlineValueIteration", ::onlineValueIteration, horizon, mdp, results)
 
 //    evaluateAlgorithm("UCT", ::uct, horizon, mdp, results)
 
-//    evaluateAlgorithm("SimpleValueIteration", ::simpleValueIteration, horizon, results)
-    evaluateAlgorithm("UCB", ::executeUcb, horizon, results)
+    evaluateAlgorithm("ValueIteration", ::executeValueIteration, horizon, results, iterations)
+    evaluateAlgorithm("UCB", ::executeUcb, horizon, results, iterations)
 //    evaluateAlgorithm("Thompson Sampling", ::thompsonSampling, horizon, results)
 //    evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, results)
-    evaluateAlgorithm("RTDP", ::executeRtdp, horizon, results)
+    evaluateAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations)
 
     if (args.isNotEmpty()) {
         File(args[0]).bufferedWriter().use { results.toJson(it) }
@@ -38,10 +42,10 @@ fun main(args: Array<String>) {
 }
 
 private fun evaluateAlgorithm(algorithm: String,
-                              function: (horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int) -> List<Result>,
-                              horizon: Int, results: MutableList<Result>) {
+                              function: (Int, Simulator, Simulator, DoubleArray, Int) -> List<Result>,
+                              horizon: Int, results: MutableList<Result>, iterations: Int) {
     val executionTime = measureTimeMillis {
-        executeAlgorithm(results, function, horizon)
+        executeAlgorithm(results, function, horizon, iterations)
     }
 
     println("$algorithm executionTime:$executionTime[ms]")
@@ -49,7 +53,7 @@ private fun evaluateAlgorithm(algorithm: String,
 
 private fun executeAlgorithm(results: MutableList<Result>,
                              algorithm: (horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int) -> List<Result>,
-                             horizon: Int) {
+                             horizon: Int, iterations: Int) {
     DoubleStream
             .iterate(0.0, { i -> i + 0.1 })
             .limit(10)
@@ -59,7 +63,7 @@ private fun executeAlgorithm(results: MutableList<Result>,
                         .iterate(0.0, { i -> i + 0.1 })
                         .limit(10)
                         .forEach { p2 ->
-                            results.addAll(algorithm(horizon, BanditWorld(p1, p2), BanditSimulator, doubleArrayOf(p1, p2), 100))
+                            results.addAll(algorithm(horizon, BanditWorld(p1, p2), BanditSimulator, doubleArrayOf(p1, p2), iterations))
                         }
             }
 }

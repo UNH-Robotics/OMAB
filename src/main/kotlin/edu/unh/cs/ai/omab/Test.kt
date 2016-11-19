@@ -16,6 +16,6 @@ fun main(args: Array<String>) {
 }
 
 private fun unitTest(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator, numberOfStates: Double) {
-    val lookAhead = calculateLookAhead(mdp, horizon, world, simulator, numberOfStates)
+    val lookAhead = calculateLookAhead(horizon)
     print("$lookAhead ,")
 }

@@ -58,7 +58,7 @@ fun executeUcb(horizon: Int, world: Simulator, simulator: Simulator, probabiliti
 
     val averageRewards = sumOfRewards.map { expectedMaxReward - it / iterations }
 
-    results.add(Result("ucb", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
+    results.add(Result("UCB", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
 
     return results
 }

@@ -3,6 +3,7 @@
 import json
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
 from pandas import DataFrame
 
 __author__ = 'Bence Cserna'
@@ -14,8 +15,6 @@ def construct_data_frame(data):
 
 
 def regret_box_plot(experiments):
-    sns.set_style("white")
-
     boxplot = sns.boxplot(x="algorithm",
                           y="regret",
                           data=experiments,
@@ -23,8 +22,17 @@ def regret_box_plot(experiments):
     plt.show(boxplot)
 
 
-def test(experiments):
-    experiments.plot()
+def regret_plot(data):
+    regret_series = data[['algorithm', 'regrets']].groupby('algorithm').apply(list_average, 'regrets')
+    values = []
+    for row in regret_series.values:
+        values.append([value for value in row])
+
+    frame = DataFrame(np.asarray(values).T, columns=list(regret_series.index))
+    print(frame)
+    plt.figure()
+    frame.plot()
+    plt.show()
 
 
 def read_data(file_name):
@@ -33,12 +41,20 @@ def read_data(file_name):
     return content
 
 
+def list_average(group, key):
+    return [sum(col) / float(len(col)) for col in zip(*group[key])]
+
+
+def configure_sns():
+    sns.set_style("white")
+
+
 def main():
-    data = DataFrame(read_data("../results/result4.dat"))
+    configure_sns()
+    data = DataFrame(read_data("../results/result5.dat"))
     # regret_box_plot(data)
     # data.set_index('algorithm', inplace=True)
-
-    print(data[['algorithm', 'reward']].groupby('algorithm').)
+    regret_plot(data)
 
 
 if __name__ == "__main__":
