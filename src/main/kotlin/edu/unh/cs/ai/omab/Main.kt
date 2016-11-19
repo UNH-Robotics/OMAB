@@ -1,6 +1,7 @@
 package edu.unh.cs.ai.omab
 
 import edu.unh.cs.ai.omab.algorithms.executeRtdp
+import edu.unh.cs.ai.omab.algorithms.executeBrtdp
 import edu.unh.cs.ai.omab.domain.BanditSimulator
 import edu.unh.cs.ai.omab.domain.BanditWorld
 import edu.unh.cs.ai.omab.domain.Simulator
@@ -10,8 +11,6 @@ import java.io.File
 import java.util.*
 import java.util.stream.DoubleStream
 import kotlin.system.measureTimeMillis
-
-
 
 /**
  * @author Bence Cserna (bence@cserna.net)
@@ -33,6 +32,7 @@ fun main(args: Array<String>) {
 //    evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, horizon, results, iterations)
 //    evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, results)
     evaluateAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations)
+    //evaluateAlgorithm("BRTDP", ::executeBrtdp, horizon, results, iterations)
 
     if (args.isNotEmpty()) {
         File(args[0]).bufferedWriter().use { results.toJson(it) }

@@ -1,7 +1,9 @@
 package edu.unh.cs.ai.omab.algorithms
 
 import edu.unh.cs.ai.omab.domain.*
+import edu.unh.cs.ai.omab.experiment.Result
 import java.util.*
+import java.util.stream.IntStream
 
 /**
  * Created by reazul on 11/18/16.
@@ -65,15 +67,16 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
 
         while(true){
             stack.push(state)
+
             mdp.addStates(mdp.generateStates(1, state))
             updateBounds(state)
 
             val (successorStates, successorValues) = getSuccessors(state) //b(y) in paper algorithm
             val sumSuccessorValues = successorValues.sum()  //B in paper algorithm
 
-            for (i in 0..4) successorValues[i] = successorValues[i] / sumSuccessorValues
-
             if(sumSuccessorValues < ((upperBound[initState]!! - lowerBound[initState]!!)/T) ) break
+
+            for (i in 0..4) successorValues[i] = successorValues[i] / sumSuccessorValues
 
             state = successorStates[ sampleSuccessor(successorValues) ]
         }
@@ -95,16 +98,54 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
     }
 }
 
-fun brtdp(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
+fun brtdp(horizon: Int, world: Simulator, simulator: Simulator, rollOutCount: Int): List<Double>  {
+    val mdp = MDP(horizon + 1)
     var currentState: BeliefState = mdp.startState
-    val localMDP = MDP(horizon + 1)
+    val averageRewards: MutableList<Double> = ArrayList(horizon)
     val simulationCount = 200
     val eps = 0.01  //Need to make sure about this value
-    val T = 50.0
+    val T = 50.0  //May need to tune this value by trial & error
+    var sum = 0.0
 
-    val brtdp = Brtdp(localMDP, simulator, simulationCount, horizon, eps, T)
+    val brtdp = Brtdp(mdp, simulator, simulationCount, horizon, eps, T)
 
-    brtdp.simulate(currentState)
+    (0..horizon - 1).forEach { level ->
+        brtdp.simulate(currentState)
+        bellmanUtilityUpdate(currentState, mdp)
+        val (bestAction, bestReward) = selectBestAction(currentState, mdp)
+        val (nextState, reward) = world.transition(currentState, bestAction)
 
-    return 0.0 //Need to make sure about the return value & need to implement the online assumption
+        currentState = nextState
+        sum += reward
+        averageRewards.add(sum / (level + 1.0))
+    }
+
+    return averageRewards //Need to make sure about the return value & need to implement the online assumption
+}
+
+fun executeBrtdp(horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int): List<Result> {
+    val results: MutableList<Result> = ArrayList(iterations)
+    val rollOutCounts = intArrayOf(10, 100, 500, 1000)
+    val expectedMaxReward = probabilities.max()!!
+
+    brtdp(horizon, world, simulator, 100)
+
+    rollOutCounts.forEach { rollOutCount ->
+        val rewardsList = IntStream.range(0, iterations).mapToObj {
+            brtdp(horizon, world, simulator, rollOutCount)
+        }
+
+        val sumOfRewards = DoubleArray(horizon)
+        rewardsList.forEach { rewards ->
+            (0..horizon - 1).forEach {
+                sumOfRewards[it] = rewards[it] + sumOfRewards[it]
+            }
+        }
+
+        val averageRewards = sumOfRewards.map { expectedMaxReward - it / iterations }
+
+        results.add(Result("BRTDP$rollOutCount", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
+    }
+
+    return results
 }
