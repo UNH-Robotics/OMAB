@@ -24,7 +24,7 @@ repositories {
 
 task execute(type: JavaExec) {
     main = 'edu.unh.cs.ai.omab.MainKt'
-    def argList = ["results/result2.dat"]
+    def argList = ["results/result3.dat"]
 
     args = argList
     classpath = sourceSets.main.runtimeClasspath

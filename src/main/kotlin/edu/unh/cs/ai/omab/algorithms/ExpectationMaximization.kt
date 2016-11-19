@@ -5,7 +5,6 @@ import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
 import java.util.stream.IntStream
 
-
 fun expectationMaximization(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
     var currentState = mdp.startState
 

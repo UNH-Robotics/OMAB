@@ -10,8 +10,7 @@ fun main(args: Array<String>) {
     println("Unit tests")
     var horizon: Int = 100
     val mdp: MDP = MDP(horizon)
-    val banditSimulator: BanditSimulator = BanditSimulator()
-
+    val banditSimulator: BanditSimulator = BanditSimulator
 
     unitTest(mdp, horizon, BanditWorld(0.5, 0.6), banditSimulator, 1.0)
 }

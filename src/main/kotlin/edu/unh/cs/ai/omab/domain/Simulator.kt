@@ -11,7 +11,7 @@ abstract class Simulator() {
     abstract fun transition(state: BeliefState, action: Action): TransitionResult
 }
 
-class BanditSimulator() : Simulator() {
+object BanditSimulator : Simulator() {
     override fun transition(state: BeliefState, action: Action): TransitionResult {
         return when (action) {
             Action.LEFT -> {
@@ -31,11 +31,11 @@ class BanditWorld(val leftProbability: Double, val rightProbability: Double) : S
         return when (action) {
             Action.LEFT -> {
                 val success = bernoulli(leftProbability)
-                TransitionResult(state.nextState(Action.LEFT, success), leftProbability)
+                TransitionResult(state.nextState(Action.LEFT, success), if (success) leftProbability else 0.0)
             }
             Action.RIGHT -> {
                 val success = bernoulli(rightProbability)
-                TransitionResult(state.nextState(Action.RIGHT, success), rightProbability)
+                TransitionResult(state.nextState(Action.RIGHT, success), if (success) rightProbability else 0.0)
             }
         }
     }

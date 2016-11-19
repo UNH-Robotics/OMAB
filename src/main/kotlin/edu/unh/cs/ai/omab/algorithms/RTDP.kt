@@ -1,7 +1,9 @@
 package edu.unh.cs.ai.omab.algorithms
 
 import edu.unh.cs.ai.omab.domain.*
+import edu.unh.cs.ai.omab.experiment.Result
 import java.util.*
+import java.util.stream.IntStream
 
 /**
  * @author Bence Cserna (bence@cserna.net)
@@ -37,22 +39,50 @@ class Rtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, val
     }
 }
 
-fun rtdp(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
-    val localMDP = MDP(horizon + 1)
-    val simulationCount = 200
-    var currentState = localMDP.startState
+fun rtdp(horizon: Int, world: Simulator, simulator: Simulator, rollOutCount: Int): List<Double> {
+    val mdp = MDP(horizon + 1)
+    val rtdp = Rtdp(mdp, simulator, rollOutCount, horizon)
 
-    val rtdp = Rtdp(localMDP, simulator, simulationCount, horizon)
 
-    val totalReward = (0..horizon - 1).map { it ->
-        rtdp.simulate(currentState, it)
-        //mdp.addStates(mdp.generateStates(1, currentState))
-        bellmanUtilityUpdate(currentState, localMDP)
-        val (bestAction, bestReward) = selectBestAction(currentState, localMDP)
+    var averageRewards: MutableList<Double> = ArrayList(horizon)
+    var sum = 0.0
+
+    var currentState = mdp.startState
+    (0..horizon - 1).forEach { level ->
+        rtdp.simulate(currentState, level)
+        bellmanUtilityUpdate(currentState, mdp)
+        val (bestAction, bestReward) = selectBestAction(currentState, mdp)
         val (nextState, reward) = world.transition(currentState, bestAction)
-        currentState = nextState
-        reward
-    }.sum()
 
-    return totalReward
+        currentState = nextState
+        sum += reward
+        averageRewards.add(sum / (level + 1.0))
+    }
+
+    return averageRewards
+}
+
+fun executeRtdp(horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int): List<Result> {
+    val results: MutableList<Result> = ArrayList(iterations)
+    val rollOutCounts = intArrayOf(10, 50, 100, 200, 500)
+    val expectedMaxReward = probabilities.max()!!
+
+    rollOutCounts.forEach { rollOutCount ->
+        val rewardsList = IntStream.range(0, iterations).mapToObj {
+            rtdp(horizon, world, simulator, rollOutCount)
+        }
+
+        val sumOfRewards = DoubleArray(horizon)
+        rewardsList.forEach { rewards ->
+            (0..horizon - 1).forEach {
+                sumOfRewards[it] = rewards[it] + sumOfRewards[it]
+            }
+        }
+
+        val averageRewards = sumOfRewards.map { expectedMaxReward - it / iterations }
+
+        results.add(Result("rtdp$rollOutCount", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
+    }
+
+    return results
 }

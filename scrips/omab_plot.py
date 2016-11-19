@@ -13,7 +13,7 @@ def construct_data_frame(data):
     return DataFrame(flat_data)
 
 
-def plot_data_frame(experiments):
+def regret_box_plot(experiments):
     sns.set_style("white")
 
     boxplot = sns.boxplot(x="algorithm",
@@ -23,6 +23,10 @@ def plot_data_frame(experiments):
     plt.show(boxplot)
 
 
+def test(experiments):
+    experiments.plot()
+
+
 def read_data(file_name):
     with open(file_name) as file:
         content = json.load(file)
@@ -30,8 +34,11 @@ def read_data(file_name):
 
 
 def main():
-    data = read_data("../results/result1.dat")
-    plot_data_frame(DataFrame(data))
+    data = DataFrame(read_data("../results/result4.dat"))
+    # regret_box_plot(data)
+    # data.set_index('algorithm', inplace=True)
+
+    print(data[['algorithm', 'reward']].groupby('algorithm').)
 
 
 if __name__ == "__main__":

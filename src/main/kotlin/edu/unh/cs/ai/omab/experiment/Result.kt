@@ -5,20 +5,32 @@ import java.io.Writer
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
-data class Result(val algorithm: String,
-                  val probabilities: List<Double>,
-                  val optimalReward: Double,
-                  val reward: Double,
-                  val regret: Double) {
-    override fun toString(): String {
-        return "{ \"algorithm\": \"$algorithm\", \"optimalReward\": $optimalReward, \"reward\": $reward, \"regret\": $regret}"
+class Result(val algorithm: String,
+             val probabilities: DoubleArray,
+             val optimalReward: Double,
+             val reward: Double,
+             val regret: Double,
+             val regrets: List<Double>) {
+
+    fun toJson(): String {
+        return "{ \"algorithm\": \"$algorithm\", \"optimalReward\": $optimalReward, \"reward\": $reward, \"regret\": $regret, \"probabilities\": ${probabilities.toJson()}, \"regrets\": ${regrets.toJson()}}"
     }
 }
 
-fun List<Result>.toJson(): String {
+fun DoubleArray.toJson(): String {
     val jsonStringBuilder = StringBuilder()
     jsonStringBuilder.append("[\n")
-    forEach { jsonStringBuilder.append(it.toString()).append(",\n") }
+    take(size - 1).forEach { jsonStringBuilder.append(it).append(",\n") }
+    jsonStringBuilder.append(last())
+    jsonStringBuilder.append("\n]")
+    return jsonStringBuilder.toString()
+}
+
+fun Iterable<Any>.toJson(): String {
+    val jsonStringBuilder = StringBuilder()
+    jsonStringBuilder.append("[\n")
+    take(count() - 1).forEach { jsonStringBuilder.append(it).append(",\n") }
+    jsonStringBuilder.append(last())
     jsonStringBuilder.append("\n]")
     return jsonStringBuilder.toString()
 }
@@ -26,8 +38,8 @@ fun List<Result>.toJson(): String {
 fun List<Result>.toJson(writer: Writer) {
     writer.append("[\n")
     if (isNotEmpty()) {
-        take(size - 1).forEach { writer.append(it.toString()).append(",\n") }
-        writer.append(last().toString())
+        take(size - 1).forEach { writer.append(it.toJson()).append(",\n") }
+        writer.append(last().toJson())
     }
     writer.append("\n]")
 }

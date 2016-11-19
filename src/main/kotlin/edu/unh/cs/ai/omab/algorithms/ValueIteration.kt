@@ -10,7 +10,7 @@ import java.util.stream.IntStream
 fun onlineValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
     val lookAhead: Int = 10
     var realHorizon = horizon
-    val onlineMDP = MDP(horizon+lookAhead)
+    val onlineMDP = MDP(horizon + lookAhead)
 
     var currentState: BeliefState = onlineMDP.startState
 
@@ -61,4 +61,20 @@ fun simpleValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Si
         reward
     }.sum()
 
+}
+
+fun calculateLookAhead(mdp: MDP, horizon: Int, world: Simulator,
+                       simulator: Simulator, numberOfStates: Double): HashMap<Int, Int> {
+
+    val stateNumberToDepth = HashMap<Int, Int>()
+
+    (0..horizon).forEach {
+        val numberOfStatesGivenDepth = (6.0 * it + 11.0 * (it * it) +
+                6 * (it * it * it) +
+                (it * it * it * it)) / 24
+        stateNumberToDepth[numberOfStatesGivenDepth.toInt()] = it
+    }
+
+
+    return stateNumberToDepth
 }
