@@ -14,42 +14,42 @@ import kotlin.system.measureTimeMillis
  * @author Bence Cserna (bence@cserna.net)
  */
 
-fun calculateQ(state: BeliefState, action: Action, mdp: MDP): Double {
-    val successProbabily = state.actionMean(action)
-    val failProbability = 1 - successProbabily
-
-    val successState = state.nextState(action, true)
-    val failState = state.nextState(action, false)
-
-    val successorLevel = state.totalSum() - 4 + 1// 4 is the sum of priors for 2 arms
-    val successMdpState = mdp.getLookupState(successorLevel, successState)
-    val failMdpState = mdp.getLookupState(successorLevel, failState)
-
-    // Calculate the probability weighed future utility
-    val expectedValueOfSuccess = successProbabily * (successMdpState.utility + Action.getReward(action))
-    val expectedValueOfFailure = failProbability * failMdpState.utility
-    return expectedValueOfSuccess + expectedValueOfFailure
-}
-
-fun selectBestAction(state: BeliefState, mdp: MDP): Pair<Action, Double> {
-    var bestAction: Action? = null
-    var bestQValue = Double.NEGATIVE_INFINITY
-
-    Action.getActions().forEach {
-        val qValue = calculateQ(state, it, mdp)
-        if (qValue > bestQValue) {
-            bestAction = it
-            bestQValue = qValue
-        }
-    }
-
-    return Pair(bestAction!!, bestQValue)
-}
-
-fun bellmanUtilityUpdate(state: BeliefState, mdp: MDP) {
-    val (action, qValue) = selectBestAction(state, mdp)
-    state.utility = qValue
-}
+//fun calculateQ(state: BeliefState, action: Action, mdp: MDP): Double {
+//    val successProbabily = state.actionMean(action)
+//    val failProbability = 1 - successProbabily
+//
+//    val successState = state.nextState(action, true)
+//    val failState = state.nextState(action, false)
+//
+//    val successorLevel = state.totalSum() - 4 + 1// 4 is the sum of priors for 2 arms
+//    val successMdpState = mdp.getLookupState(successorLevel, successState)
+//    val failMdpState = mdp.getLookupState(successorLevel, failState)
+//
+//    // Calculate the probability weighed future utility
+//    val expectedValueOfSuccess = successProbabily * (successMdpState.utility + Action.getReward(action))
+//    val expectedValueOfFailure = failProbability * failMdpState.utility
+//    return expectedValueOfSuccess + expectedValueOfFailure
+//}
+//
+//fun selectBestAction(state: BeliefState, mdp: MDP): Pair<Action, Double> {
+//    var bestAction: Action? = null
+//    var bestQValue = Double.NEGATIVE_INFINITY
+//
+//    Action.getActions().forEach {
+//        val qValue = calculateQ(state, it, mdp)
+//        if (qValue > bestQValue) {
+//            bestAction = it
+//            bestQValue = qValue
+//        }
+//    }
+//
+//    return Pair(bestAction!!, bestQValue)
+//}
+//
+//fun bellmanUtilityUpdate(state: BeliefState, mdp: MDP) {
+//    val (action, qValue) = selectBestAction(state, mdp)
+//    state.utility = qValue
+//}
 
 //fun onlineValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
 //    val lookAhead: Int = 10
