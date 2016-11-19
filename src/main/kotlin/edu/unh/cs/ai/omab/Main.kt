@@ -1,8 +1,6 @@
 package edu.unh.cs.ai.omab
 
-import edu.unh.cs.ai.omab.algorithms.executeThompsonSampling
-import edu.unh.cs.ai.omab.algorithms.executeUcb
-import edu.unh.cs.ai.omab.algorithms.executeValueIteration
+import edu.unh.cs.ai.omab.algorithms.executeRtdp
 import edu.unh.cs.ai.omab.domain.BanditSimulator
 import edu.unh.cs.ai.omab.domain.BanditWorld
 import edu.unh.cs.ai.omab.domain.Simulator
@@ -21,8 +19,8 @@ import kotlin.system.measureTimeMillis
 fun main(args: Array<String>) {
     println("OMAB!")
 
-    val horizon = 100
-    val iterations = 200
+    val horizon = 15
+    val iterations = 10
 
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
 
@@ -30,11 +28,11 @@ fun main(args: Array<String>) {
 
 //    evaluateAlgorithm("UCT", ::uct, horizon, mdp, results)
 
-    evaluateAlgorithm("ValueIteration", ::executeValueIteration, horizon, results, iterations)
-    evaluateAlgorithm("UCB", ::executeUcb, horizon, results, iterations)
-    evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, horizon, results, iterations)
+//    evaluateAlgorithm("ValueIteration", ::executeValueIteration, horizon, results, iterations)
+//    evaluateAlgorithm("UCB", ::executeUcb, horizon, results, iterations)
+//    evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, horizon, results, iterations)
 //    evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, results)
-//    evaluateAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations)
+    evaluateAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations)
 
     if (args.isNotEmpty()) {
         File(args[0]).bufferedWriter().use { results.toJson(it) }
