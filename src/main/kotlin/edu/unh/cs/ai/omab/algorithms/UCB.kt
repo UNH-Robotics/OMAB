@@ -17,7 +17,7 @@ fun upperConfidenceBounds(mdp: MDP, horizon: Int, world: Simulator, simulator: S
 
     return IntStream.iterate(0, { i -> i + 1 }).limit(horizon.toLong()).mapToDouble {
         val leftQ = upperConfidenceBoundsValue(currentState.leftMean(), currentState.leftSum(), currentState.totalSum(), 2.0)
-        val rightQ = upperConfidenceBoundsValue(currentState.rightMean(), currentState.leftSum(), currentState.totalSum(), 2.0)
+        val rightQ = upperConfidenceBoundsValue(currentState.rightMean(), currentState.rightSum(), currentState.totalSum(), 2.0)
 
         val (nextState, reward) = if (leftQ > rightQ) {
             world.transition(currentState, Action.LEFT)
