@@ -134,6 +134,7 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
 
         var count = 0
         while (count++ < numSimulations && !terminationChecker.reachedTermination()) {
+            print("At simulation ${count}\n")
             recurTreeSearch(rootState, 0)
         }
     }
@@ -157,14 +158,12 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
 /**
  * Applies UCT on the provided MDP
  * @TODO Currently will apply search all the way to the horizon, may make use of a max depth in future
- *
- * @TODO: somehow add as parameter to the algorithm 
- * fun uct(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator, terminationChecker: TerminationChecker): Double {
  */
 fun uct(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
 
+    // below 5000 will fail to do even a single simulation!
     val terminationChecker = TimeTerminationChecker(10000)
-    val numSimulations = 1000
+    val numSimulations = 1000000
 
     var currentState = mdp.startState
     val planner = UCTPlanner(simulator, numSimulations, horizon)
