@@ -24,7 +24,7 @@ fun main(args: Array<String>) {
     val horizon = 20
     val iterations = 10
 
-    val configuration = Configuration(3, doubleArrayOf(1.0), doubleArrayOf(), horizon)
+    val configuration = Configuration(3, doubleArrayOf(0.8,0.2,0.2), doubleArrayOf(1.0,1.0,1.0), horizon)
 
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
 
@@ -70,7 +70,7 @@ private fun executeAlgorithm(results: MutableList<Result>,
                         .iterate(0.0, { i -> i + 0.1 })
                         .limit(10)
                         .forEach { p2 ->
-                            results.addAll(algorithm(horizon, BanditWorld(configuration.probabilities), BanditSimulator, doubleArrayOf(p1, p2), iterations, configuration))
+                            results.addAll(algorithm(horizon, BanditWorld(configuration.probabilities), BanditSimulator(configuration.rewards), doubleArrayOf(p1, p2), iterations, configuration))
                         }
             }
 }
