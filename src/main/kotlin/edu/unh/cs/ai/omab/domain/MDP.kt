@@ -112,7 +112,7 @@ class MDP(depth: Int? = null, val numberOfActions: Int) {
             return generateStates2(depth, state)
         } else {
             levelGeneration.clear()
-            return generateStatess(0, depth, state)
+            return generateStates(0, depth, state)
         }
     }
 
@@ -123,7 +123,7 @@ class MDP(depth: Int? = null, val numberOfActions: Int) {
     }
 
     private var levelGeneration = ArrayList<BeliefState>()
-    fun generateStatess(depth: Int, level: Int, state: BeliefState): ArrayList<BeliefState> {
+    private fun generateStates(depth: Int, level: Int, state: BeliefState): ArrayList<BeliefState> {
 
         if (depth == level) {
             return ArrayList(levelGeneration.filter { it.totalSum() - (2 * numberOfActions) == depth })
@@ -135,7 +135,7 @@ class MDP(depth: Int? = null, val numberOfActions: Int) {
             listOf(true, false).forEach { j ->
                 val newState = state.nextState(i, j)
                 levelGeneration.add(newState)
-                (generateStatess(depth + 1, level, newState)).forEach { levelReturn.add(it) }
+                (generateStates(depth + 1, level, newState)).forEach { levelReturn.add(it) }
             }
             levelReturn.forEach { levelGeneration.add(it) }
             levelGeneration = makeUnique(levelGeneration)
