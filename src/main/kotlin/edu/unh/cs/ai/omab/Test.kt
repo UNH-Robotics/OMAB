@@ -12,9 +12,12 @@ fun main(args: Array<String>) {
 
     unitTest(mdp, horizon, BanditWorld(doubleArrayOf(0.8,0.3,0.5)), banditSimulator, 1.0)
 
-    val levelList = mdp.generateStatess(0, 3, BeliefState(intArrayOf(1,1,1), intArrayOf(1,1,1)))
+    val levelList = mdp.generateStates(3, BeliefState(intArrayOf(1,1,1), intArrayOf(1,1,1)))
     println(levelList.size)
     println(levelList)
+
+    val nextLevel = mdp.generateNextLevel(BeliefState(intArrayOf(1,1,1), intArrayOf(1,1,1)))
+    println(nextLevel)
 
 }
 
