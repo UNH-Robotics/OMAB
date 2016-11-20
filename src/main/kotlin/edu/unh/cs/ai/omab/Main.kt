@@ -1,6 +1,7 @@
 package edu.unh.cs.ai.omab
 
-import edu.unh.cs.ai.omab.algorithms.executeRtdp
+//import edu.unh.cs.ai.omab.algorithms.executeRtdp
+import edu.unh.cs.ai.omab.algorithms.*
 import edu.unh.cs.ai.omab.domain.BanditSimulator
 import edu.unh.cs.ai.omab.domain.BanditWorld
 import edu.unh.cs.ai.omab.domain.Simulator
@@ -28,11 +29,11 @@ fun main(args: Array<String>) {
 
 //    evaluateAlgorithm("UCT", ::uct, horizon, mdp, results)
 
-//    evaluateAlgorithm("ValueIteration", ::executeValueIteration, horizon, results, iterations)
-//    evaluateAlgorithm("UCB", ::executeUcb, horizon, results, iterations)
-//    evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, horizon, results, iterations)
+    evaluateAlgorithm("ValueIteration", ::executeValueIteration, horizon, results, iterations)
+    evaluateAlgorithm("UCB", ::executeUcb, horizon, results, iterations)
+    evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, horizon, results, iterations)
 //    evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, results)
-    evaluateAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations)
+//    evaluateAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations)
 
     if (args.isNotEmpty()) {
         File(args[0]).bufferedWriter().use { results.toJson(it) }
@@ -61,7 +62,7 @@ private fun executeAlgorithm(results: MutableList<Result>,
                         .iterate(0.0, { i -> i + 0.1 })
                         .limit(10)
                         .forEach { p2 ->
-                            results.addAll(algorithm(horizon, BanditWorld(p1, p2), BanditSimulator, doubleArrayOf(p1, p2), iterations))
+                            results.addAll(algorithm(horizon, BanditWorld(doubleArrayOf(p1, p2)), BanditSimulator, doubleArrayOf(p1, p2), iterations))
                         }
             }
 }

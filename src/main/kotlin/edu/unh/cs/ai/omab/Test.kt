@@ -1,21 +1,22 @@
 package edu.unh.cs.ai.omab
 
 import edu.unh.cs.ai.omab.algorithms.calculateLookAhead
-import edu.unh.cs.ai.omab.domain.BanditSimulator
-import edu.unh.cs.ai.omab.domain.BanditWorld
-import edu.unh.cs.ai.omab.domain.MDP
-import edu.unh.cs.ai.omab.domain.Simulator
+import edu.unh.cs.ai.omab.domain.*
+import java.util.*
 
 fun main(args: Array<String>) {
     println("Unit tests")
     var horizon: Int = 100
-    val mdp: MDP = MDP(horizon)
+    val mdp: MDP = MDP(horizon, 2)
     val banditSimulator: BanditSimulator = BanditSimulator
 
-    unitTest(mdp, horizon, BanditWorld(0.5, 0.6), banditSimulator, 1.0)
+    unitTest(mdp, horizon, BanditWorld(doubleArrayOf(0.8,0.3,0.5)), banditSimulator, 1.0)
+
+    val listToFill = ArrayList<BeliefState>()
+
 }
 
 private fun unitTest(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator, numberOfStates: Double) {
     val lookAhead = calculateLookAhead(horizon)
-    print("$lookAhead ,")
+//    print("$lookAhead ,")
 }

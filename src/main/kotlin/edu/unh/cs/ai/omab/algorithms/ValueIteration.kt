@@ -8,10 +8,10 @@ import java.util.stream.IntStream
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
-fun onlineValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
+fun onlineValueIteration(horizon: Int, world: Simulator, simulator: Simulator): Double {
     val lookAhead: Int = 10
     var realHorizon = horizon
-    val onlineMDP = MDP(horizon + lookAhead)
+    val onlineMDP = MDP(horizon + lookAhead, numberOfActions = 2)
 
     var currentState: BeliefState = onlineMDP.startState
 
@@ -21,14 +21,14 @@ fun onlineValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Si
 
     return IntStream.range(0, realHorizon).mapToDouble {
         (1..(lookAhead)).forEach {
-            val generatedDepthStates: ArrayList<BeliefState> = mdp.generateStates(it, currentState)
+            val generatedDepthStates: ArrayList<BeliefState> = onlineMDP.generateStates(it, currentState)
             generatedDepthStates.forEach { it.utility = 0.0 }
 
             onlineMDP.addStates(generatedDepthStates)
         }
 
         (lookAhead - 1 downTo 0).forEach {
-            mdp.getStates(it).forEach { bellmanUtilityUpdate(it, onlineMDP) }
+            onlineMDP.getStates(it).forEach { bellmanUtilityUpdate(it, onlineMDP) }
         }
         realHorizon -= lookAhead
         val (bestAction, qValue) = selectBestAction(currentState, onlineMDP)
@@ -58,7 +58,7 @@ fun valueIteration(mdp: MDP, horizon: Int, world: Simulator): List<Double> {
 }
 
 fun initializeMDP(horizon: Int): MDP {
-    val mdp = MDP(horizon)
+    val mdp = MDP(horizon, numberOfActions = 2)
 
     (0..horizon).forEach {
         val generatedDepthStates: ArrayList<BeliefState> = mdp.generateStates(it, mdp.startState)
@@ -107,6 +107,22 @@ fun calculateLookAhead(horizon: Int): HashMap<Int, Int> {
         val numberOfStatesGivenDepth = (6.0 * it + 11.0 * (it * it) +
                 6 * (it * it * it) +
                 (it * it * it * it)) / 24
+        stateNumberToDepth[numberOfStatesGivenDepth.toInt()] = it
+    }
+
+
+    return stateNumberToDepth
+}
+
+fun calculateLookAhead(mdp: MDP, horizon: Int, world: Simulator,
+                       simulator: Simulator, numberOfStates: Double): HashMap<Int,Int> {
+
+    val stateNumberToDepth = HashMap<Int, Int>()
+
+    (0..horizon).forEach {
+        val numberOfStatesGivenDepth =  (6.0* it + 11.0 * (it * it) +
+                6 * (it * it * it) +
+                (it * it * it * it))/24
         stateNumberToDepth[numberOfStatesGivenDepth.toInt()] = it
     }
 

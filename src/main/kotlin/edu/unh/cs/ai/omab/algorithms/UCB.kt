@@ -1,6 +1,5 @@
 package edu.unh.cs.ai.omab.algorithms
 
-import edu.unh.cs.ai.omab.domain.Action
 import edu.unh.cs.ai.omab.domain.BeliefState
 import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
@@ -15,20 +14,29 @@ import kotlin.Double.Companion.POSITIVE_INFINITY
  * @author Bence Cserna (bence@cserna.net)
  */
 fun upperConfidenceBounds(horizon: Int, world: Simulator): List<Double> {
-    var currentState: BeliefState = MDP().startState
+    var currentState: BeliefState = MDP(numberOfActions = 2).startState
     val averageRewards: MutableList<Double> = ArrayList(horizon)
     var sum = 0.0
 
     (0..horizon - 1).forEach { level ->
-        val leftQ = upperConfidenceBoundsValue(currentState.leftMean(), currentState.leftSum(), currentState.totalSum(), 2.0)
-        val rightQ = upperConfidenceBoundsValue(currentState.rightMean(), currentState.rightSum(), currentState.totalSum(), 2.0)
 
-        val (nextState, reward) = if (leftQ > rightQ) {
-            world.transition(currentState, Action.LEFT)
-        } else {
-            world.transition(currentState, Action.RIGHT)
-        }
+        val upperConfidenceBoundsValues = (0..currentState.alphas.size-1).map {
+            upperConfidenceBoundsValue(currentState.actionMean(it), currentState.actionSum(it), currentState.totalSum(), 2.0)
+        }.toDoubleArray()
 
+        var bestAction = 0
+        (0..upperConfidenceBoundsValues.size-1).forEach { if (upperConfidenceBoundsValues[bestAction] <
+                upperConfidenceBoundsValues[it]) {bestAction = it}  else {bestAction = bestAction}}
+
+//        val leftQ = upperConfidenceBoundsValue(currentState.leftMean(), currentState.leftSum(), currentState.totalSum(), 2.0)
+//        val rightQ = upperConfidenceBoundsValue(currentState.rightMean(), currentState.rightSum(), currentState.totalSum(), 2.0)
+
+//        val (nextState, reward) = if (leftQ > rightQ) {
+//            world.transition(currentState, Action.LEFT)
+//        } else {
+//            world.transition(currentState, Action.RIGHT)
+//        }
+        val (nextState, reward) = world.transition(currentState, bestAction)
         currentState = nextState
         sum += reward
         averageRewards.add(sum / (level + 1.0))

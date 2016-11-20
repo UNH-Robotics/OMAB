@@ -1,7 +1,5 @@
 package edu.unh.cs.ai.omab.algorithms
 
-import edu.unh.cs.ai.omab.domain.Action.LEFT
-import edu.unh.cs.ai.omab.domain.Action.RIGHT
 import edu.unh.cs.ai.omab.domain.BeliefState
 import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
@@ -14,22 +12,34 @@ import java.util.stream.IntStream
  * @author Bence Cserna (bence@cserna.net)
  */
 fun thompsonSampling(horizon: Int, world: Simulator): List<Double> {
-    var currentState: BeliefState = MDP().startState
+    var currentState: BeliefState = MDP(numberOfActions = 2).startState
     val averageRewards: MutableList<Double> = ArrayList(horizon)
     var sum = 0.0
 
     (0..horizon - 1).forEach { level ->
-        val leftBetaDistribution = BetaDistribution(currentState.alphaLeft.toDouble(), currentState.betaLeft.toDouble())
-        val rightBetaDistribution = BetaDistribution(currentState.alphaRight.toDouble(), currentState.betaRight.toDouble())
 
-        val leftSample = leftBetaDistribution.inverseCumulativeProbability(world.random.nextDouble())
-        val rightSample = rightBetaDistribution.inverseCumulativeProbability(world.random.nextDouble())
-
-        val (nextState, reward) = if (leftSample > rightSample) {
-            world.transition(currentState, LEFT)
-        } else {
-            world.transition(currentState, RIGHT)
+        val distributions = (0..currentState.alphas.size-1).map {
+            BetaDistribution(currentState.alphas[it].toDouble(), currentState.betas[it].toDouble())
         }
+
+        val samples = (0..distributions.size-1).map {
+            distributions[it].inverseCumulativeProbability(world.random.nextDouble())
+        }
+
+//        val leftBetaDistribution = BetaDistribution(currentState.alphaLeft.toDouble(), currentState.betaLeft.toDouble())
+//        val rightBetaDistribution = BetaDistribution(currentState.alphaRight.toDouble(), currentState.betaRight.toDouble())
+
+//        val leftSample = leftBetaDistribution.inverseCumulativeProbability(world.random.nextDouble())
+//        val rightSample = rightBetaDistribution.inverseCumulativeProbability(world.random.nextDouble())
+
+        var bestAction = 0
+        (0..samples.size-1).forEach { if (samples[bestAction] < samples[it]) {bestAction = it}  else {bestAction = bestAction}}
+        val (nextState, reward) = world.transition(currentState, bestAction)
+//        val (nextState, reward) = if (leftSample > rightSample) {
+//            world.transition(currentState, LEFT)
+//        } else {
+//            world.transition(currentState, RIGHT)
+//        }
 
         currentState = nextState
         sum += reward

@@ -13,6 +13,8 @@ data class BeliefState(val alphas: IntArray, val betas: IntArray) {
     fun betaSum() = betas.sum()
     fun totalSum() = alphaSum() + betaSum()
 
+    fun size() = alphas.size
+
     override fun hashCode(): Int {
         var hashCode = 0
         alphas.forEach { hashCode = hashCode xor it; hashCode shl 1 }
@@ -40,8 +42,8 @@ data class BeliefState(val alphas: IntArray, val betas: IntArray) {
         return BeliefState(newAlphas, newBetas)
     }
 
-    fun actionMean(action: Int): Int {
-        return alphas[action] / (actionSum(action))
+    fun actionMean(action: Int): Double {
+        return alphas[action].toDouble() / (actionSum(action).toDouble())
     }
 
     fun actionSum(action: Int): Int {
@@ -49,7 +51,7 @@ data class BeliefState(val alphas: IntArray, val betas: IntArray) {
     }
 }
 
-class MDP(depth: Int? = null, numberOfActions: Int) {
+class MDP(depth: Int? = null, val numberOfActions: Int) {
 
 
     val states: MutableMap<BeliefState, BeliefState> = HashMap()
@@ -67,7 +69,7 @@ class MDP(depth: Int? = null, numberOfActions: Int) {
 
 
     fun getReward(action: Int): Double {
-        rewards[action]
+        return rewards[action]
     }
 
     fun addStates(statesToAdd: ArrayList<BeliefState>) {
@@ -75,36 +77,79 @@ class MDP(depth: Int? = null, numberOfActions: Int) {
             val level = it.alphaSum() + it.betaSum() - 4
             mapsByLevel[level][it] = it
             statesByLevel[level].add(it)
-            states[it] = it
-        }
-    }
-
-    fun generateStates(depth: Int) {
-        val sum = depth + 4 //  4 is the prior
-        for (leftAlpha in 1..sum) {
-            for (leftBeta in 1..(sum - leftAlpha)) {
-                for (rightAlpha in 1..(sum - leftAlpha - leftBeta)) {
-                    for (rightBeta in 1..(sum - leftAlpha - leftBeta - rightAlpha)) {
-                        val state = BeliefState(leftAlpha, leftBeta, rightAlpha, rightBeta)
-                        count++
-                        states[state] = state
-                        val level = leftAlpha + leftBeta + rightAlpha + rightBeta - startState.totalSum()// sum of start is the prior
-                        mapsByLevel[level][state] = state
-                        statesByLevel[level].add(state)
-                    }
-                }
+            if (!states.containsKey(it)) {
+                states[it] = it
             }
         }
     }
 
-    fun generateStates(depth: Int, state: BeliefState): ArrayList<BeliefState> {
+//    fun generateStates(depth: Int) {
+//        val sum = depth + 4 //  4 is the prior
+//        for (leftAlpha in 1..sum) {
+//            for (leftBeta in 1..(sum - leftAlpha)) {
+//                for (rightAlpha in 1..(sum - leftAlpha - leftBeta)) {
+//                    for (rightBeta in 1..(sum - leftAlpha - leftBeta - rightAlpha)) {
+//                        val state = BeliefState(leftAlpha, leftBeta, rightAlpha, rightBeta)
+//                        count++
+//                        states[state] = state
+//                        val level = leftAlpha + leftBeta + rightAlpha + rightBeta - startState.totalSum()// sum of start is the prior
+//                        mapsByLevel[level][state] = state
+//                        statesByLevel[level].add(state)
+//                    }
+//                }
+//            }
+//        }
+//    }
+
+    fun generateStates(depth: Int, state: BeliefState) : ArrayList<BeliefState> {
+        if (numberOfActions == 2) {
+            return generateStates2(depth, state)
+        } else {
+            TODO()
+        }
+    }
+
+//    fun generateStates(depth: Int, state: BeliefState, listToFill: List<BeliefState>) {
+//        if (listToFill.size == 0) {
+//        }
+//        if (depth >= 0) {
+//            (0..(numberOfActions * 2) - 1).forEach {
+//                (0..(((numberOfActions * 2)) / 2) - 1).forEach {
+//                    val alphas = state.alphas.copyOf()
+//                    val betas = state.betas.copyOf()
+//                    alphas[it] += 1
+//                    if (depth == 0) {
+//                        listToFill[index] = (BeliefState(alphas, state.betas))
+//                    }
+//                    generateStates(depth - 1, BeliefState(alphas, state.betas), listToFill.takeLastWhile { it -> it.totalSum() > depth })
+//                    betas[it] += 1
+//                    if (depth == 0) {
+//                        listToFill.add(BeliefState(state.alphas, betas))
+//                    }
+//                    generateStates(depth - 1, BeliefState(state.alphas, betas), listToFill)
+//                }
+//            }
+//        }
+//    }
+
+    fun generateStates2(depth: Int, state: BeliefState): ArrayList<BeliefState> {
         val initializedStates = ArrayList<BeliefState>()
         for (x in 0..(depth)) {
             for (y in 0..(depth - x)) {
                 (0..(depth - x - y))
                         .mapTo(initializedStates) {
-                            BeliefState(x + state.alphaLeft, y + state.betaLeft,
-                                    it + state.alphaRight, depth - x - y - it + state.betaRight)
+                            val alphas = state.alphas.copyOf()
+                            val betas = state.betas.copyOf()
+                            /** alphaLeft && betaLeft*/
+                            alphas[0] = x + alphas[0]
+                            betas[0] = y + betas[0]
+                            /** alphaRight && betaRight*/
+                            alphas[1] = it + alphas[1]
+                            betas[1] = depth - x - y - it + betas[1]
+                            BeliefState(alphas,betas)
+//                            val alphas: IntArray =
+//                                    BeliefState(x + state.alphaLeft, y + state.betaLeft,
+//                                            it + state.alphaRight, depth - x - y - it + state.betaRight)
                         }
             }
         }

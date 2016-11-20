@@ -1,6 +1,5 @@
 package edu.unh.cs.ai.omab.algorithms
 
-import edu.unh.cs.ai.omab.domain.Action
 import edu.unh.cs.ai.omab.domain.BeliefState
 import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
@@ -79,21 +78,7 @@ import kotlin.system.measureTimeMillis
 //    }.sum()
 //}
 
-fun calculateLookAhead(mdp: MDP, horizon: Int, world: Simulator,
-                       simulator: Simulator, numberOfStates: Double): HashMap<Int,Int> {
 
-    val stateNumberToDepth = HashMap<Int, Int>()
-
-    (0..horizon).forEach {
-        val numberOfStatesGivenDepth =  (6.0* it + 11.0 * (it * it) +
-                6 * (it * it * it) +
-                (it * it * it * it))/24
-        stateNumberToDepth[numberOfStatesGivenDepth.toInt()] = it
-    }
-
-
-    return stateNumberToDepth
-}
 
 //fun simpleValueIteration(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
 //
