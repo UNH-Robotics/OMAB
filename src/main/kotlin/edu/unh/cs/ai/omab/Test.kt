@@ -13,7 +13,7 @@ fun main(args: Array<String>) {
     unitTest(mdp, horizon, BanditWorld(doubleArrayOf(0.8,0.3,0.5)), banditSimulator, 1.0)
 
     val listToFill = ArrayList<BeliefState>()
-    mdp.generateStatess(0, mdp.startState, listToFill)
+    mdp.generateStatess(0, BeliefState(intArrayOf(2,2,2), intArrayOf(2,2,2)), listToFill)
 
 }
 
