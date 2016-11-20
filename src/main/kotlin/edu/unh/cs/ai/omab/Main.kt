@@ -12,8 +12,6 @@ import java.util.*
 import java.util.stream.DoubleStream
 import kotlin.system.measureTimeMillis
 
-
-
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
@@ -33,7 +31,8 @@ fun main(args: Array<String>) {
     evaluateAlgorithm("UCB", ::executeUcb, horizon, results, iterations)
     evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, horizon, results, iterations)
 //    evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, results)
-//    evaluateAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations)
+    //evaluateAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations)
+    evaluateAlgorithm("BRTDP", ::executeBrtdp, horizon, results, iterations)
 
     if (args.isNotEmpty()) {
         File(args[0]).bufferedWriter().use { results.toJson(it) }
