@@ -26,10 +26,12 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
     fun getSuccessors(state: BeliefState): TransitionResult {
         val successorValues = ArrayList<Double>(4)
         val successorStates = ArrayList<BeliefState>(4)
+
         for(action in Action.getActions()){
             for(isSuccess in listOf(true, false)){
                 val nextState = state.nextState(action, isSuccess)
                 successorStates.add(nextState)
+                updateBounds(nextState)
                 val trp = if (isSuccess) state.actionMean(action) else 1-state.actionMean(action)
                 successorValues.add( trp * (upperBound[nextState]!! - lowerBound[nextState]!!) )
             }
@@ -40,7 +42,7 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
     fun sampleSuccessor(successorValues: ArrayList<Double>) : Int{
         var sumProportion = 0.0
         val rand = random.nextDouble() * successorValues.sum() // generate random in range 0 to successorValues.sum()
-        for(i in 0..4){
+        for(i in 0..3){
             if(rand< successorValues[i]) return i
             sumProportion += successorValues[i]
         }
@@ -56,19 +58,17 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
     }
 
     fun updateBounds(state : BeliefState){
+        mdp.addStates(mdp.generateStates(1, state))
         val qValue = getMaxQ(state)
         upperBound[state] = getUpperBoundsValue(qValue, state.leftSum(), state.totalSum())
         lowerBound[state] = getLowerBoundsValue(qValue, state.leftSum(), state.totalSum())
     }
 
-    fun runSampleTrial(initState: BeliefState) : Double{
+    fun runSampleTrial(initState: BeliefState, level: Int) : Double{
         var state = initState
         val stack = Stack<BeliefState>()
-
-        while(true){
+        for (i in level..horizon-1){
             stack.push(state)
-
-            mdp.addStates(mdp.generateStates(1, state))
             updateBounds(state)
 
             val (successorStates, successorValues) = getSuccessors(state) //b(y) in paper algorithm
@@ -76,7 +76,7 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
 
             if(sumSuccessorValues < ((upperBound[initState]!! - lowerBound[initState]!!)/T) ) break
 
-            for (i in 0..4) successorValues[i] = successorValues[i] / sumSuccessorValues
+            for (i in 0..3) successorValues[i] = successorValues[i] / sumSuccessorValues
 
             state = successorStates[ sampleSuccessor(successorValues) ]
         }
@@ -89,12 +89,11 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
         return 0.0
     }
 
-    fun simulate(currentState: BeliefState) {
+    fun simulate(currentState: BeliefState, level: Int) {
         var count = 0
-        while ( runSampleTrial(currentState) > eps){
+        while ( runSampleTrial(currentState, level) > eps){
             count++
         }
-        //(0..simulationCount).forEach { rollOut(currentState, currentDepth) }
     }
 }
 
@@ -110,7 +109,7 @@ fun brtdp(horizon: Int, world: Simulator, simulator: Simulator, rollOutCount: In
     val brtdp = Brtdp(mdp, simulator, simulationCount, horizon, eps, T)
 
     (0..horizon - 1).forEach { level ->
-        brtdp.simulate(currentState)
+        brtdp.simulate(currentState, level)
         bellmanUtilityUpdate(currentState, mdp)
         val (bestAction, bestReward) = selectBestAction(currentState, mdp)
         val (nextState, reward) = world.transition(currentState, bestAction)
