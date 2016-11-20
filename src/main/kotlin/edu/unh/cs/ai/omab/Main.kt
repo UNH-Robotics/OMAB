@@ -32,7 +32,7 @@ fun main(args: Array<String>) {
     evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, horizon, results, iterations)
 //    evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, results)
     //evaluateAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations)
-    evaluateAlgorithm("BRTDP", ::executeBrtdp, horizon, results, iterations)
+//    evaluateAlgorithm("BRTDP", ::executeBrtdp, horizon, results, iterations)
 
     if (args.isNotEmpty()) {
         File(args[0]).bufferedWriter().use { results.toJson(it) }

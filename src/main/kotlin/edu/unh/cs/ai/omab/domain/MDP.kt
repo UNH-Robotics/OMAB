@@ -101,7 +101,7 @@ class MDP(depth: Int? = null, val numberOfActions: Int) {
 //        }
 //    }
 
-    fun generateStates(depth: Int, state: BeliefState) : ArrayList<BeliefState> {
+    fun generateStates(depth: Int, state: BeliefState): ArrayList<BeliefState> {
         if (numberOfActions == 2) {
             return generateStates2(depth, state)
         } else {
@@ -109,28 +109,37 @@ class MDP(depth: Int? = null, val numberOfActions: Int) {
         }
     }
 
-//    fun generateStates(depth: Int, state: BeliefState, listToFill: List<BeliefState>) {
-//        if (listToFill.size == 0) {
-//        }
-//        if (depth >= 0) {
-//            (0..(numberOfActions * 2) - 1).forEach {
-//                (0..(((numberOfActions * 2)) / 2) - 1).forEach {
-//                    val alphas = state.alphas.copyOf()
-//                    val betas = state.betas.copyOf()
-//                    alphas[it] += 1
-//                    if (depth == 0) {
-//                        listToFill[index] = (BeliefState(alphas, state.betas))
-//                    }
-//                    generateStates(depth - 1, BeliefState(alphas, state.betas), listToFill.takeLastWhile { it -> it.totalSum() > depth })
-//                    betas[it] += 1
-//                    if (depth == 0) {
-//                        listToFill.add(BeliefState(state.alphas, betas))
-//                    }
-//                    generateStates(depth - 1, BeliefState(state.alphas, betas), listToFill)
-//                }
-//            }
-//        }
-//    }
+    fun generateStatess(depth: Int, state: BeliefState, listToFill: ArrayList<BeliefState>) {
+
+        if(depth>3)
+            return
+
+        println(state)
+        for (i in 0..numberOfActions-1){
+            for(j in listOf(true, false)) {
+                generateStatess(depth + 1, state.nextState(i, j), listToFill)
+            }
+        }
+
+        /*if (depth >= 0) {
+            (0..(numberOfActions * 2) - 1).forEach {
+                (0..(((numberOfActions * 2)) / 2) - 1).forEach {
+                    val alphas = state.alphas.copyOf()
+                    val betas = state.betas.copyOf()
+                    alphas[it] += 1
+                    if (depth == 0) {
+                        listToFill.add(BeliefState(alphas, state.betas))
+                    }
+                    generateStates(depth - 1, BeliefState(alphas, state.betas), listToFill)
+                    betas[it] += 1
+                    if (depth == 0) {
+                        listToFill.add(BeliefState(state.alphas, betas))
+                    }
+                    generateStates(depth - 1, BeliefState(state.alphas, betas), listToFill)
+                }
+            }
+        }*/
+    }
 
     fun generateStates2(depth: Int, state: BeliefState): ArrayList<BeliefState> {
         val initializedStates = ArrayList<BeliefState>()
@@ -146,7 +155,7 @@ class MDP(depth: Int? = null, val numberOfActions: Int) {
                             /** alphaRight && betaRight*/
                             alphas[1] = it + alphas[1]
                             betas[1] = depth - x - y - it + betas[1]
-                            BeliefState(alphas,betas)
+                            BeliefState(alphas, betas)
 //                            val alphas: IntArray =
 //                                    BeliefState(x + state.alphaLeft, y + state.betaLeft,
 //                                            it + state.alphaRight, depth - x - y - it + state.betaRight)
