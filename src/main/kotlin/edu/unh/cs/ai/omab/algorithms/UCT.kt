@@ -21,7 +21,7 @@ import edu.unh.cs.ai.omab.domain.Action.RIGHT
  * Assumes the Bandit problem with 2 arms and is meant to solve the problem
  * where the expected reward of each arm is unknown and represented as a belief state
  */
-class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon: Int) {
+class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon: Int, val maxDepth: Int) {
 
     private val random = Random()
     private var currentTimeStep = 0
@@ -53,7 +53,10 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
         }
     }
 
-    private fun hasReachedHorizon(depth: Int) = depth + currentTimeStep >= horizon
+    /**
+    * @brief Returns true if either max depth or horizon has been reached
+    */
+    private fun exceedsMaxDepth(depth: Int) = depth + currentTimeStep >= horizon || depth >= maxDepth
 
     /**
      * The UCT rollout is a simulation where the actions are taken randomly until the horizon has been reached
@@ -61,7 +64,7 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
      */
     private fun rollout(state: BeliefState, depth: Int): Double {
         // base case
-        if (hasReachedHorizon(depth)) {
+        if (exceedsMaxDepth(depth)) {
             return 0.0
         }
 
@@ -71,7 +74,7 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
         var currentDepth = depth + 1
         // TODO: add check whether state is terminal to generalize to other problems
         // rollout until horizon reached
-        while (!hasReachedHorizon(currentDepth)) {
+        while (!exceedsMaxDepth(currentDepth)) {
             val action = if (random.nextBoolean()) LEFT else RIGHT
             val transitionResult = simulator.transition(nextState, action)
             nextState = transitionResult.state
@@ -88,6 +91,7 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
         }
         graph.put(state, newNode)
 
+        print("Ended rollout at depth ${currentDepth}\n")
         return rolloutReturn.toDouble()
     }
 
@@ -99,7 +103,7 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
     private fun recurTreeSearch(state: BeliefState, depth: Int): Double {
 
         // base case
-        if (hasReachedHorizon(depth)) {
+        if (exceedsMaxDepth(depth)) {
             return 0.0
         }
 
@@ -127,14 +131,14 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
      * Builds the UCT datastructure from root state assuming timestep
      */
     private fun buildTree(rootState: BeliefState, terminationChecker: TerminationChecker) {
-        assert(!hasReachedHorizon(0))
+        assert(!exceedsMaxDepth(0))
 
         // start empty
         graph.clear()
 
         var count = 0
         while (count++ < numSimulations && !terminationChecker.reachedTermination()) {
-            print("At simulation ${count}\n")
+            /*print("At simulation ${count}\n")*/
             recurTreeSearch(rootState, 0)
         }
     }
@@ -157,16 +161,16 @@ class UCTPlanner(val simulator: Simulator, val numSimulations: Int, val horizon:
 
 /**
  * Applies UCT on the provided MDP
- * @TODO Currently will apply search all the way to the horizon, may make use of a max depth in future
  */
 fun uct(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator): Double {
 
-    // below 5000 will fail to do even a single simulation!
-    val terminationChecker = TimeTerminationChecker(10000)
-    val numSimulations = 1000000
+    // has to be high enough to do at least one simulation..
+    val terminationChecker = TimeTerminationChecker(100000)
+    val maxNumSimulations = 1000000
+    val maxDepth = 5
 
     var currentState = mdp.startState
-    val planner = UCTPlanner(simulator, numSimulations, horizon)
+    val planner = UCTPlanner(simulator, maxNumSimulations, horizon, maxDepth)
 
     return IntStream.iterate(0, { t -> t + 1 }).limit(horizon.toLong()).mapToLong {
         // select action
