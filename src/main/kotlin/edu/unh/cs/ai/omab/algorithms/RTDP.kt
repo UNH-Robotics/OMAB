@@ -1,6 +1,7 @@
 //package edu.unh.cs.ai.omab.algorithms
 //
 //import edu.unh.cs.ai.omab.domain.*
+//import edu.unh.cs.ai.omab.experiment.Configuration
 //import edu.unh.cs.ai.omab.experiment.Result
 //import java.util.*
 //import java.util.stream.IntStream
@@ -62,7 +63,7 @@
 //    return averageRewards
 //}
 //
-//fun executeRtdp(horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int): List<Result> {
+//fun executeRtdp(horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int, configuration: Configuration): List<Result> {
 //    val results: MutableList<Result> = ArrayList(iterations)
 //    val rollOutCounts = intArrayOf(10, 100, 500, 1000)
 //    val expectedMaxReward = probabilities.max()!!

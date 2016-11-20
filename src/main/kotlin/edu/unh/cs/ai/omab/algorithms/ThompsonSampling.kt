@@ -3,6 +3,7 @@ package edu.unh.cs.ai.omab.algorithms
 import edu.unh.cs.ai.omab.domain.BeliefState
 import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
+import edu.unh.cs.ai.omab.experiment.Configuration
 import edu.unh.cs.ai.omab.experiment.Result
 import org.apache.commons.math3.distribution.BetaDistribution
 import java.util.*
@@ -49,7 +50,7 @@ fun thompsonSampling(horizon: Int, world: Simulator): List<Double> {
     return averageRewards
 }
 
-fun executeThompsonSampling(horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int): List<Result> {
+fun executeThompsonSampling(horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int, configuration: Configuration): List<Result> {
     val results: MutableList<Result> = ArrayList(iterations)
     val expectedMaxReward = probabilities.max()!!
 

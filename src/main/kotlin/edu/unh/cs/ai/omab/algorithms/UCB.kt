@@ -3,6 +3,7 @@ package edu.unh.cs.ai.omab.algorithms
 import edu.unh.cs.ai.omab.domain.BeliefState
 import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
+import edu.unh.cs.ai.omab.experiment.Configuration
 import edu.unh.cs.ai.omab.experiment.Result
 import java.lang.Math.log
 import java.lang.Math.sqrt
@@ -49,7 +50,7 @@ fun upperConfidenceBoundsValue(μ: Double, t: Int, depth: Int, α: Double = 2.0)
     return if (t == 1) POSITIVE_INFINITY else μ + sqrt(α * log(t.toDouble()) / (2 * depth * (t - 1)))
 }
 
-fun executeUcb(horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int): List<Result> {
+fun executeUcb(horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int, configuration: Configuration): List<Result> {
     val results: MutableList<Result> = ArrayList(iterations)
     val expectedMaxReward = probabilities.max()!!
 

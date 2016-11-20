@@ -1,6 +1,7 @@
 package edu.unh.cs.ai.omab.algorithms
 
 import edu.unh.cs.ai.omab.domain.*
+import edu.unh.cs.ai.omab.experiment.Configuration
 import edu.unh.cs.ai.omab.experiment.Result
 import java.util.*
 import java.util.stream.IntStream
@@ -75,7 +76,7 @@ fun initializeMDP(horizon: Int): MDP {
 }
 
 
-fun executeValueIteration(horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int): List<Result> {
+fun executeValueIteration(horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int, configuration: Configuration): List<Result> {
     val results: MutableList<Result> = ArrayList(iterations)
     val expectedMaxReward = probabilities.max()!!
 

@@ -28,6 +28,14 @@ def regret_plot(data):
     for row in regret_series.values:
         values.append([value for value in row])
 
+    max_len = 0
+    for row in values:
+        max_len = max(len(row), max_len)
+
+    for row in values:
+        if len(row) < max_len:
+            row += [float('NaN')] * (max_len - len(row))
+
     frame = DataFrame(np.asarray(values).T, columns=list(regret_series.index))
     print(frame)
     # plt.figure()
@@ -51,9 +59,12 @@ def configure_sns():
 
 def main():
     configure_sns()
-    data = DataFrame(read_data("../results/result5.dat"))
-    # regret_box_plot(data)
+    data = DataFrame(read_data("../results/result_vi_ts_ucb_100.dat"))
+    data2 = DataFrame(read_data("../results/result_rtdp_h80.dat"))
+
+# regret_box_plot(data)
     # data.set_index('algorithm', inplace=True)
+    data = data.append(data2, ignore_index=True)
     regret_plot(data)
 
 
