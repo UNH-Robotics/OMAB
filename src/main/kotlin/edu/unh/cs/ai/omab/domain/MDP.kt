@@ -1,108 +1,164 @@
 package edu.unh.cs.ai.omab.domain
 
-import edu.unh.cs.ai.omab.domain.Action.LEFT
-import edu.unh.cs.ai.omab.domain.Action.RIGHT
 import java.util.*
 
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
 
-data class BeliefState(val alphaLeft: Int, val betaLeft: Int, val alphaRight: Int, val betaRight: Int) {
-    var utility = 0.0
+data class BeliefState(val alphas: IntArray, val betas: IntArray) {
+    var utility = 1000.0
 
-    fun leftSum() = alphaLeft + betaLeft
-    fun rightSum() = alphaRight + betaRight
-    fun totalSum() = leftSum() + rightSum()
-    fun leftMean() = alphaLeft.toDouble() / leftSum()
-    fun rightMean() = alphaRight.toDouble() / rightSum()
+    fun alphaSum() = alphas.sum()
+    fun betaSum() = betas.sum()
+    fun totalSum() = alphaSum() + betaSum()
 
-    fun nextState(action: Action, success: Boolean) =
-            when {
-                LEFT == action && success -> BeliefState(alphaLeft + 1, betaLeft, alphaRight, betaRight)
-                LEFT == action && !success -> BeliefState(alphaLeft, betaLeft + 1, alphaRight, betaRight)
-                RIGHT == action && success -> BeliefState(alphaLeft, betaLeft, alphaRight + 1, betaRight)
-                RIGHT == action && !success -> BeliefState(alphaLeft, betaLeft, alphaRight, betaRight + 1)
-                else -> throw RuntimeException("Invalid state!")
-            }
+    fun size() = alphas.size
 
-    fun actionMean(action: Action) = when (action) {
-        Action.LEFT -> leftMean()
-        Action.RIGHT -> rightMean()
+    override fun hashCode(): Int {
+        var hashCode = 0
+        alphas.forEach { hashCode = hashCode xor it; hashCode shl 1 }
+        betas.forEach { hashCode = hashCode xor it; hashCode shl 1 }
+        return hashCode
     }
 
-    fun actionSum(action: Action) = when (action) {
-        Action.LEFT -> leftSum()
-        Action.RIGHT -> rightSum()
+    override fun equals(other: Any?): Boolean {
+        return when (other) {
+            null -> false
+            !is BeliefState -> false
+            else -> (other.alphas.size == alphas.size) && (other.betas.size == alphas.size) &&
+                    (0..alphas.size - 1).all { alphas[it] == other.alphas[it] && betas[it] == other.betas[it] }
+        }
+    }
+
+    fun nextState(action: Int, success: Boolean): BeliefState {
+        val newAlphas = alphas.copyOf()
+        val newBetas = betas.copyOf()
+        if (success) {
+            newAlphas[action] += 1
+        } else {
+            newBetas[action] += 1
+        }
+        return BeliefState(newAlphas, newBetas)
+    }
+
+    fun actionMean(action: Int): Double {
+        return alphas[action].toDouble() / (actionSum(action).toDouble())
+    }
+
+    fun actionSum(action: Int): Int {
+        return alphas[action] + betas[action]
     }
 }
 
-enum class Action {
-    LEFT, RIGHT;
+class MDP(depth: Int? = null, val numberOfActions: Int) {
 
-    companion object {
-        fun getActions(): List<Action> {
-            val availableActions = listOf(LEFT, RIGHT)
-            return availableActions
-        }
 
-        fun getReward(action: Action): Double {
-            return 1.0
-        }
-    }
-}
-
-data class TransitionResult(val state: BeliefState, val reward: Int)
-
-class MDP(depth: Int? = null) {
     val states: MutableMap<BeliefState, BeliefState> = HashMap()
     private val mapsByLevel: Array<MutableMap<BeliefState, BeliefState>>
     private val statesByLevel: Array<MutableList<BeliefState>>
+    private val rewards = doubleArrayOf(1.0, 1.0, 1.0)
 
-    val startState = BeliefState(1, 1, 1, 1)
+    val startState = BeliefState(IntArray(numberOfActions, { 1 }), IntArray(numberOfActions, { 1 }))
+    val actions = IntArray(numberOfActions, { it })
 
     init {
         mapsByLevel = Array<MutableMap<BeliefState, BeliefState>>(depth?.plus(1) ?: 0, { HashMap<BeliefState, BeliefState>() })
         statesByLevel = Array<MutableList<BeliefState>>(depth?.plus(1) ?: 0, { ArrayList<BeliefState>() })
-        if (depth != null) {
-            generateStates(depth)
-        }
     }
 
 
-    fun addStates(level: Int, statesToAdd: ArrayList<BeliefState>) {
+    fun getReward(action: Int): Double {
+        return rewards[action]
+    }
+
+    fun addStates(statesToAdd: ArrayList<BeliefState>) {
         statesToAdd.forEach {
+            val level = it.alphaSum() + it.betaSum() - 4
             mapsByLevel[level][it] = it
             statesByLevel[level].add(it)
-        }
-    }
-
-    fun generateStates(depth: Int) {
-        val sum = depth + 4 //  4 is the prior
-        for (leftAlpha in 1..sum) {
-            for (leftBeta in 1..(sum - leftAlpha)) {
-                for (rightAlpha in 1..(sum - leftAlpha - leftBeta)) {
-                    for (rightBeta in 1..(sum - leftAlpha - leftBeta - rightAlpha)) {
-                        val state = BeliefState(leftAlpha, leftBeta, rightAlpha, rightBeta)
-                        count++
-                        states[state] = state
-                        val level = leftAlpha + leftBeta + rightAlpha + rightBeta - 4 // 4 is the prior
-                        mapsByLevel[level][state] = state
-                        statesByLevel[level].add(state)
-                    }
-                }
+            if (!states.containsKey(it)) {
+                states[it] = it
             }
         }
     }
 
+//    fun generateStates(depth: Int) {
+//        val sum = depth + 4 //  4 is the prior
+//        for (leftAlpha in 1..sum) {
+//            for (leftBeta in 1..(sum - leftAlpha)) {
+//                for (rightAlpha in 1..(sum - leftAlpha - leftBeta)) {
+//                    for (rightBeta in 1..(sum - leftAlpha - leftBeta - rightAlpha)) {
+//                        val state = BeliefState(leftAlpha, leftBeta, rightAlpha, rightBeta)
+//                        count++
+//                        states[state] = state
+//                        val level = leftAlpha + leftBeta + rightAlpha + rightBeta - startState.totalSum()// sum of start is the prior
+//                        mapsByLevel[level][state] = state
+//                        statesByLevel[level].add(state)
+//                    }
+//                }
+//            }
+//        }
+//    }
+
     fun generateStates(depth: Int, state: BeliefState): ArrayList<BeliefState> {
+        if (numberOfActions == 2) {
+            return generateStates2(depth, state)
+        } else {
+            TODO()
+        }
+    }
+
+    fun generateStatess(depth: Int, state: BeliefState, listToFill: ArrayList<BeliefState>) {
+
+        if(depth>3)
+            return
+
+        println(state)
+        for (i in 0..numberOfActions-1){
+            for(j in listOf(true, false)) {
+                generateStatess(depth + 1, state.nextState(i, j), listToFill)
+            }
+        }
+
+        /*if (depth >= 0) {
+            (0..(numberOfActions * 2) - 1).forEach {
+                (0..(((numberOfActions * 2)) / 2) - 1).forEach {
+                    val alphas = state.alphas.copyOf()
+                    val betas = state.betas.copyOf()
+                    alphas[it] += 1
+                    if (depth == 0) {
+                        listToFill.add(BeliefState(alphas, state.betas))
+                    }
+                    generateStates(depth - 1, BeliefState(alphas, state.betas), listToFill)
+                    betas[it] += 1
+                    if (depth == 0) {
+                        listToFill.add(BeliefState(state.alphas, betas))
+                    }
+                    generateStates(depth - 1, BeliefState(state.alphas, betas), listToFill)
+                }
+            }
+        }*/
+    }
+
+    fun generateStates2(depth: Int, state: BeliefState): ArrayList<BeliefState> {
         val initializedStates = ArrayList<BeliefState>()
         for (x in 0..(depth)) {
             for (y in 0..(depth - x)) {
                 (0..(depth - x - y))
                         .mapTo(initializedStates) {
-                            BeliefState(x + state.alphaLeft, y + state.betaLeft,
-                                    it + state.alphaRight, depth - x - y - it + state.betaRight)
+                            val alphas = state.alphas.copyOf()
+                            val betas = state.betas.copyOf()
+                            /** alphaLeft && betaLeft*/
+                            alphas[0] = x + alphas[0]
+                            betas[0] = y + betas[0]
+                            /** alphaRight && betaRight*/
+                            alphas[1] = it + alphas[1]
+                            betas[1] = depth - x - y - it + betas[1]
+                            BeliefState(alphas, betas)
+//                            val alphas: IntArray =
+//                                    BeliefState(x + state.alphaLeft, y + state.betaLeft,
+//                                            it + state.alphaRight, depth - x - y - it + state.betaRight)
                         }
             }
         }
@@ -116,39 +172,42 @@ class MDP(depth: Int? = null) {
     var count = 0
 }
 
-abstract class Simulator() {
-    val random = Random()
-    fun bernoulli(probability: Double): Boolean = random.nextDouble() <= probability
-    abstract fun transition(state: BeliefState, action: Action): TransitionResult
+fun calculateQ(state: BeliefState, action: Int, mdp: MDP): Double {
+    val successProbability = state.actionMean(action)
+    val failProbability = 1 - successProbability
+
+    val successState = state.nextState(action, true)
+    val failState = state.nextState(action, false)
+
+    val successorLevel = state.totalSum() - mdp.startState.totalSum() + 1// the sum of priors for n arms
+    val successMdpState = mdp.getLookupState(successorLevel, successState)
+    val failMdpState = mdp.getLookupState(successorLevel, failState)
+
+    // Calculate the probability weighed future utility
+    val expectedValueOfSuccess = successProbability * (successMdpState.utility + mdp.getReward(action))
+    val expectedValueOfFailure = failProbability * failMdpState.utility
+    return expectedValueOfSuccess + expectedValueOfFailure
 }
 
-class BanditSimulator() : Simulator() {
-    override fun transition(state: BeliefState, action: Action): TransitionResult {
-        return when (action) {
-            LEFT -> {
-                val success = bernoulli(state.leftMean())
-                TransitionResult(state.nextState(LEFT, success), if (success) 1 else 0)
-            }
-            RIGHT -> {
-                val success = bernoulli(state.rightMean())
-                TransitionResult(state.nextState(RIGHT, success), if (success) 1 else 0)
-            }
+fun selectBestAction(state: BeliefState, mdp: MDP): Pair<Int, Double> {
+    var bestAction: Int? = null
+    var bestQValue = Double.NEGATIVE_INFINITY
+
+    mdp.actions.forEach {
+        val qValue = calculateQ(state, it, mdp)
+        if (qValue > bestQValue) {
+            bestAction = it
+            bestQValue = qValue
         }
     }
+
+    return Pair(bestAction!!, bestQValue)
 }
 
-class BanditWorld(val leftProbability: Double, val rightProbability: Double) : Simulator() {
-    override fun transition(state: BeliefState, action: Action): TransitionResult {
-        return when (action) {
-            LEFT -> {
-                val success = bernoulli(leftProbability)
-                TransitionResult(state.nextState(LEFT, success), if (success) 1 else 0)
-            }
-            RIGHT -> {
-                val success = bernoulli(rightProbability)
-                TransitionResult(state.nextState(RIGHT, success), if (success) 1 else 0)
-            }
-        }
-    }
+fun bellmanUtilityUpdate(state: BeliefState, mdp: MDP) {
+    val (action, qValue) = selectBestAction(state, mdp)
+    state.utility = qValue
 }
+
+
 
