@@ -1,7 +1,8 @@
 package edu.unh.cs.ai.omab
 
-//import edu.unh.cs.ai.omab.algorithms.executeRtdp
-import edu.unh.cs.ai.omab.algorithms.*
+import edu.unh.cs.ai.omab.algorithms.executeThompsonSampling
+import edu.unh.cs.ai.omab.algorithms.executeUcb
+import edu.unh.cs.ai.omab.algorithms.executeValueIteration
 import edu.unh.cs.ai.omab.domain.BanditSimulator
 import edu.unh.cs.ai.omab.domain.BanditWorld
 import edu.unh.cs.ai.omab.domain.Simulator
@@ -9,8 +10,8 @@ import edu.unh.cs.ai.omab.experiment.Configuration
 import edu.unh.cs.ai.omab.experiment.Result
 import edu.unh.cs.ai.omab.experiment.toJson
 import java.io.File
+import java.lang.Math.max
 import java.util.*
-import java.util.stream.DoubleStream
 import kotlin.system.measureTimeMillis
 
 /**
@@ -19,23 +20,24 @@ import kotlin.system.measureTimeMillis
 fun main(args: Array<String>) {
     println("OMAB!")
 
-    val horizon = 5
-    val iterations = 10
-
-    val configuration = Configuration(3, doubleArrayOf(0.8, 0.2, 0.2), doubleArrayOf(1.0, 1.0, 1.0), horizon)
+    val configuration = Configuration(
+            arms = 3,
+            probabilities = doubleArrayOf(0.6, 0.4, 0.4),
+            rewards = doubleArrayOf(1.0, 1.0, 1.0),
+            horizon = 100,
+            experimentProbabilities = generateProbabilities(10, 3),
+            iterations = 10)
 
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
+    /*evaluateSingleAlgorithm("UCB once", ::executeUcb, horizon, results, iterations, configuration)*/
 
 //    evaluateAlgorithm("OnlineValueIteration", ::onlineValueIteration, horizon, results, iterations, configuration)
-
 //    evaluateAlgorithm("UCT", ::uct, horizon, mdp, results)
-
-//    evaluateAlgorithm("ValueIteration", ::executeValueIteration, horizon, results, iterations, configuration)
-   evaluateSingleAlgorithm("UCB once", ::executeUcb, horizon, results, iterations, configuration)
-    evaluateAlgorithm("UCB", ::executeUcb, horizon, results, iterations, configuration)
-    evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, horizon, results, iterations, configuration)
+    evaluateAlgorithm("ValueIteration", ::executeValueIteration, results, configuration)
+    evaluateAlgorithm("UCB", ::executeUcb, results, configuration)
+    evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, results, configuration)
 //    evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, results)
-    evaluateAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations, configuration)
+//    evaluateAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations, configuration)
 //    evaluateAlgorithm("BRTDP", ::executeBrtdp, horizon, results, iterations)
 
     if (args.isNotEmpty()) {
@@ -43,54 +45,61 @@ fun main(args: Array<String>) {
     }
 }
 
-private fun executeSingleAlgorithm(results: MutableList<Result>,
-                                   algorithm: (horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int, Configuration) -> List<Result>, horizon: Int, iterations: Int, configuration: Configuration) {
-
-    results.addAll(algorithm(horizon, BanditWorld(configuration.probabilities), BanditSimulator(configuration.rewards), configuration.probabilities, iterations, configuration))
-    print(results.toString())
-}
-
-private fun evaluateSingleAlgorithm(algorithm: String,
-                              function: (Int, Simulator, Simulator, DoubleArray, Int, Configuration) -> List<Result>,
-                              horizon: Int,
-                              results: MutableList<Result>,
-                              iterations: Int,
-                              configuration: Configuration) {
-
-    val executionTime = measureTimeMillis {
-        executeSingleAlgorithm(results, function, horizon, iterations, configuration)
-    }
-
-    println("$algorithm executionTime:$executionTime[ms]")
-}
-
 private fun evaluateAlgorithm(algorithm: String,
-                              function: (Int, Simulator, Simulator, DoubleArray, Int, Configuration) -> List<Result>,
-                              horizon: Int,
+                              function: (Simulator, Simulator, DoubleArray, Configuration) -> List<Result>,
                               results: MutableList<Result>,
-                              iterations: Int,
                               configuration: Configuration) {
 
     val executionTime = measureTimeMillis {
-        executeAlgorithm(results, function, horizon, iterations, configuration)
+        executeAlgorithm(results, function, configuration)
     }
 
     println("$algorithm executionTime:$executionTime[ms]")
 }
 
 private fun executeAlgorithm(results: MutableList<Result>,
-                             algorithm: (horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int, Configuration) -> List<Result>,
-                             horizon: Int, iterations: Int, configuration: Configuration) {
-    DoubleStream
-            .iterate(0.0, { i -> i + 0.1 })
-            .limit(10)
-            .parallel()
-            .forEach { p1 ->
-                DoubleStream
-                        .iterate(0.0, { i -> i + 0.1 })
-                        .limit(10)
-                        .forEach { p2 ->
-                            results.addAll(algorithm(horizon, BanditWorld(configuration.probabilities), BanditSimulator(configuration.rewards), doubleArrayOf(p1, p2), iterations, configuration))
-                        }
+                             algorithm: (world: Simulator, simulator: Simulator, DoubleArray, Configuration) -> List<Result>,
+                             configuration: Configuration) {
+    configuration.experimentProbabilities.forEach {
+        results.addAll(algorithm(BanditWorld(configuration.probabilities), BanditSimulator(configuration.rewards), it, configuration))
+    }
+}
+
+private fun generateProbabilities(resolution: Int, count: Int): List<DoubleArray> {
+    val step = 1.0 / resolution
+
+    fun generateLevel(max: Double): DoubleArray = DoubleArray((max / step).toInt(), { max(0.0, max - (it + 1) * step) })
+
+    var current: MutableList<DoubleArray>
+    var next = ArrayList<DoubleArray>()
+
+    current = generateLevel(1.0).map {
+        val firstLevel = DoubleArray(count)
+        firstLevel[0] = it
+        firstLevel
+    }.toMutableList()
+
+    // Generate states level by level
+    (1..count - 1).forEach { level ->
+        current.forEach { ps ->
+            // Get possible next level
+            val max = ps[level - 1]
+            if (max < step * (count - level)) {
+                return@forEach // Make sure that we have enough for the next levels
             }
+
+            val probabilities = generateLevel(max)
+
+            probabilities.forEach { p ->
+                val extendesProbabilities = ps.copyOf()
+                extendesProbabilities[level] = p
+                next.add(extendesProbabilities)
+            }
+        }
+
+        current = next
+        next = ArrayList<DoubleArray>()
+    }
+
+    return current
 }

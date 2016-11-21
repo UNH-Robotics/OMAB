@@ -59,8 +59,8 @@ def configure_sns():
 
 def main():
     configure_sns()
-    data = DataFrame(read_data("../results/result_vi_ts_ucb_100.dat"))
-    data2 = DataFrame(read_data("../results/result_rtdp_h80.dat"))
+    data = DataFrame(read_data("../../experiment-results/results.txt"))
+    data2 = DataFrame(read_data("../../experiment-results/results.txt"))
 
 
 
