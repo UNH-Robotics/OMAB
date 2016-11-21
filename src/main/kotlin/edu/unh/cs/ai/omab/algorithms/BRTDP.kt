@@ -1,6 +1,7 @@
 package edu.unh.cs.ai.omab.algorithms
 
 import edu.unh.cs.ai.omab.domain.*
+import edu.unh.cs.ai.omab.experiment.Configuration
 import edu.unh.cs.ai.omab.experiment.Result
 import java.util.*
 import java.util.stream.IntStream
@@ -8,19 +9,24 @@ import java.util.stream.IntStream
 /**
  * Created by reazul on 11/18/16.
  */
-class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, val horizon: Int, val eps: Double, val T: Double) {
+class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, val horizon: Int, val eps: Double, val T: Double, configuration: Configuration) {
     private var graph: MutableMap<BeliefState, BeliefState> = HashMap()
     private var upperBound: MutableMap<BeliefState, Double> = HashMap()
     private var lowerBound: MutableMap<BeliefState, Double> = HashMap()
     val random = Random()
+    var numActions = 0
+
+    init {
+        numActions = configuration.arms-1
+    }
 
     fun getMaxQ(state: BeliefState): Double {
-        return Action.getActions()
+        return (0..numActions)
                 .map { calculateQValue(checkGraph(state), it, mdp)}
                 .max()!!
     }
 
-    fun calculateQValue(st: BeliefState, action: Action, mdp: MDP): Double {
+    fun calculateQValue(st: BeliefState, action: Int, mdp: MDP): Double {
         val state = checkGraph(st)
         val successProbabily = state.actionMean(action)
         val failProbability = 1 - successProbabily
@@ -28,12 +34,12 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
         val successState = checkGraph(state.nextState(action, true))
         val failState = checkGraph(state.nextState(action, false))
 
-        val successorLevel = state.totalSum() - 4 + 1// 4 is the sum of priors for 2 arms
+        val successorLevel = state.totalSum() - mdp.startState.totalSum() + 1// 4 is the sum of priors for 2 arms
         val successMdpState = checkGraph(mdp.getLookupState(successorLevel, successState))
         val failMdpState = checkGraph(mdp.getLookupState(successorLevel, failState))
 
         // Calculate the probability weighed future utility
-        val expectedValueOfSuccess = successProbabily * (successMdpState.utility + Action.getReward(action))
+        val expectedValueOfSuccess = successProbabily * (successMdpState.utility + mdp.getReward(action))
         val expectedValueOfFailure = failProbability * failMdpState.utility
 
         return expectedValueOfSuccess + expectedValueOfFailure
@@ -45,7 +51,7 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
         val successorValues = ArrayList<Double>(4)
         val successorStates = ArrayList<BeliefState>(4)
 
-        for(action in Action.getActions()){
+        for(action in 0..numActions){
             for(isSuccess in listOf(true, false)){
                 val nextState = state.nextState(action, isSuccess)
                 successorStates.add(checkGraph(nextState))
@@ -60,7 +66,7 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
     fun sampleSuccessor(successorValues: ArrayList<Double>) : Int{
         var sumProportion = 0.0
         val rand = random.nextDouble() * successorValues.sum() // generate random in range 0 to successorValues.sum()
-        for(i in 0..3){
+        for(i in 0..(numActions*2)){
             if(rand< successorValues[i]) return i
             sumProportion += successorValues[i]
         }
@@ -89,8 +95,22 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
         state.utility = qValue
         util = state.utility
         //println("After State: $state, Utility: $util, qValue: $qValue")
-        upperBound[state] = getUpperBoundsValue(qValue, state.leftSum(), state.totalSum())
-        lowerBound[state] = getLowerBoundsValue(qValue, state.leftSum(), state.totalSum())
+
+        var mxUpper = -Double.MAX_VALUE
+        (0..state.alphas.size-1).map {
+            var value = getUpperBoundsValue(qValue, state.actionSum(it), state.totalSum(), 2.0)
+            if(mxUpper<value) mxUpper = value
+        }
+        upperBound[state] = mxUpper
+
+        //upperBound[state] = getUpperBoundsValue(qValue, state.actionSum(it), state.totalSum())
+
+        var mxLower = -Double.MAX_VALUE
+        (0..state.alphas.size-1).map {
+            var value = getLowerBoundsValue(qValue, state.actionSum(it), state.totalSum(), 2.0)
+            if(mxLower<value) mxLower = value
+        }
+        lowerBound[state] = mxLower//getLowerBoundsValue(qValue, state.leftSum(), state.totalSum())
 
         //println("update bounds")
         val x = lowerBound[state]!!
@@ -151,8 +171,8 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
     }
 }
 
-fun brtdp(horizon: Int, world: Simulator, simulator: Simulator, rollOutCount: Int): List<Double>  {
-    val mdp = MDP(horizon + 1)
+fun brtdp(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator, rollOutCount: Int, configuration: Configuration): List<Double>  {
+
     var currentState: BeliefState = mdp.startState
     val averageRewards: MutableList<Double> = ArrayList(horizon)
     val simulationCount = 200
@@ -160,7 +180,7 @@ fun brtdp(horizon: Int, world: Simulator, simulator: Simulator, rollOutCount: In
     val T = 50.0  //May need to tune this value by trial & error
     var sum = 0.0
 
-    val brtdp = Brtdp(mdp, simulator, simulationCount, horizon, eps, T)
+    val brtdp = Brtdp(mdp, simulator, simulationCount, horizon, eps, T, configuration)
     //brtdp.simulate(currentState, 0)
 
     (0..horizon - 1).forEach { level ->
@@ -179,16 +199,18 @@ fun brtdp(horizon: Int, world: Simulator, simulator: Simulator, rollOutCount: In
     return averageRewards //Need to make sure about the return value & need to implement the online assumption
 }
 
-fun executeBrtdp(horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int): List<Result> {
+fun executeBrtdp(horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int, configuration: Configuration): List<Result> {
     val results: MutableList<Result> = ArrayList(iterations)
     val rollOutCounts = intArrayOf(10, 100, 500, 1000)
     val expectedMaxReward = probabilities.max()!!
 
-    brtdp(horizon, world, simulator, 20)
+    val mdp = MDP(horizon + 1, configuration.arms)
+
+    brtdp(mdp, horizon, world, simulator, 20, configuration)
 
     rollOutCounts.forEach { rollOutCount ->
         val rewardsList = IntStream.range(0, iterations).mapToObj {
-            brtdp(horizon, world, simulator, rollOutCount)
+            brtdp(mdp, horizon, world, simulator, rollOutCount, configuration)
         }
 
         val sumOfRewards = DoubleArray(horizon)
