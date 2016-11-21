@@ -16,7 +16,7 @@ fun thompsonSampling(horizon: Int, world: Simulator, arms: Int, rewards: DoubleA
     val mdp: MDP = MDP(numberOfActions = arms)
     var currentState: BeliefState = mdp.startState
     mdp.setRewards(rewards)
-    val averageRewards: MutableList<Double> = ArrayList(horizon)
+    val rewards: MutableList<Double> = ArrayList(horizon)
     var sum = 0.0
 
     (0..horizon - 1).forEach { level ->
@@ -51,11 +51,11 @@ fun thompsonSampling(horizon: Int, world: Simulator, arms: Int, rewards: DoubleA
 //        }
 
         currentState = nextState
-        sum += reward
-        averageRewards.add(sum / (level + 1.0))
+        sum = reward
+        rewards.add(sum)// / (level + 1.0))
     }
 
-    return averageRewards
+    return rewards
 }
 
 fun executeThompsonSampling(world: Simulator, simulator: Simulator, probabilities: DoubleArray, configuration: Configuration): List<Result> {
@@ -73,7 +73,7 @@ fun executeThompsonSampling(world: Simulator, simulator: Simulator, probabilitie
         }
     }
 
-    val averageRewards = sumOfRewards.map { expectedMaxReward - it / configuration.iterations }
+    val averageRewards = sumOfRewards.map { (expectedMaxReward) - it / configuration.iterations }
 
     results.add(Result("TS", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
 

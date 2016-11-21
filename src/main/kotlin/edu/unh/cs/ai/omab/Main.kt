@@ -11,6 +11,7 @@ import edu.unh.cs.ai.omab.experiment.Configuration
 import edu.unh.cs.ai.omab.experiment.Result
 import edu.unh.cs.ai.omab.experiment.toJson
 import java.io.File
+import java.lang.Math.exp
 import java.lang.Math.max
 import java.util.*
 import java.util.stream.IntStream
@@ -24,11 +25,11 @@ fun main(args: Array<String>) {
 
     val configuration = Configuration(
             arms = 3,
-            probabilities = doubleArrayOf(0.6, 0.4, 0.4),
+            probabilities = doubleArrayOf(0.8, 0.2, 0.2),
             rewards = doubleArrayOf(1.0, 1.0, 1.0),
-            horizon = 100,
-            experimentProbabilities = generateProbabilities(10, 3),
-            iterations = 10)
+            horizon = 50,
+            experimentProbabilities = generateProbabilities(25, 3),
+            iterations = 1)
 
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
 
@@ -65,11 +66,14 @@ private fun executeAlgorithm(results: MutableList<Result>,
                              configuration: Configuration) {
 
     val experimentProbabilities = configuration.experimentProbabilities
+
+//    experimentProbabilities.forEach { print(it[0]); print(","); println(it[1]) }
+
     IntStream.range(0, experimentProbabilities.size)
             .parallel()
             .forEach {
                 results.addAll(algorithm(
-                        BanditWorld(configuration.probabilities),
+                        BanditWorld(configuration.experimentProbabilities[it]),
                         BanditSimulator(configuration.rewards),
                         experimentProbabilities[it],
                         configuration))
@@ -94,7 +98,7 @@ private fun generateProbabilities(resolution: Int, count: Int): List<DoubleArray
     (1..count - 1).forEach { level ->
         current.forEach { ps ->
             // Get possible next level
-            val max = ps[level - 1]
+            val max = 1.0//ps[level - 1]
             if (max < step * (count - level)) {
                 return@forEach // Make sure that we have enough for the next levels
             }

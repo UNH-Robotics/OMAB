@@ -15,10 +15,10 @@ import kotlin.Double.Companion.POSITIVE_INFINITY
  * @author Bence Cserna (bence@cserna.net)
  */
 private fun upperConfidenceBounds(horizon: Int, world: Simulator, arms: Int, rewards: DoubleArray): List<Double> {
-    var mdp: MDP = MDP(numberOfActions = arms)
+    val mdp: MDP = MDP(numberOfActions = arms)
     mdp.setRewards(rewards)
     var currentState: BeliefState = mdp.startState
-    val averageRewards: MutableList<Double> = ArrayList(horizon)
+    val rewards: MutableList<Double> = ArrayList(horizon)
     var sum = 0.0
 
     (0..horizon - 1).forEach { level ->
@@ -47,11 +47,11 @@ private fun upperConfidenceBounds(horizon: Int, world: Simulator, arms: Int, rew
 //        }
         val (nextState, reward) = world.transition(currentState, bestAction)
         currentState = nextState
-        sum += reward
-        averageRewards.add(sum / (level + 1.0))
+        sum = reward
+        rewards.add(sum)// / (level + 1.0))
     }
-
-    return averageRewards
+//    println(rewards)
+    return rewards
 }
 
 fun upperConfidenceBoundsValue(μ: Double, t: Int, depth: Int, α: Double = 2.0): Double {
@@ -73,7 +73,9 @@ fun executeUcb(world: Simulator, simulator: Simulator, probabilities: DoubleArra
         }
     }
 
-    val averageRewards = sumOfRewards.map { expectedMaxReward - it / configuration.iterations }
+//    sumOfRewards.map(::println)
+
+    val averageRewards = sumOfRewards.map { (expectedMaxReward) - it / configuration.iterations }
 
     results.add(Result("UCB", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
 
