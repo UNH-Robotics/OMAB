@@ -51,7 +51,6 @@ fun main(args: Array<String>) {
 private fun evaluateAlgorithm(algorithm: String,
                               function: (Simulator, Simulator, DoubleArray, Configuration) -> List<Result>,
                               results: MutableList<Result>,
-                              iterations: Int,
                               configuration: Configuration) {
 
     val executionTime = measureTimeMillis {

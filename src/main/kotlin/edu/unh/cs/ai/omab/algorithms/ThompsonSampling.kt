@@ -21,11 +21,11 @@ fun thompsonSampling(horizon: Int, world: Simulator, arms: Int, rewards: DoubleA
 
     (0..horizon - 1).forEach { level ->
 
-        val distributions = (0..currentState.alphas.size-1).map {
+        val distributions = (0..currentState.alphas.size - 1).map {
             BetaDistribution(currentState.alphas[it].toDouble(), currentState.betas[it].toDouble())
         }
 
-        val samples = (0..distributions.size-1).map {
+        val samples = (0..distributions.size - 1).map {
             distributions[it].inverseCumulativeProbability(world.random.nextDouble())
         }
 
@@ -36,7 +36,13 @@ fun thompsonSampling(horizon: Int, world: Simulator, arms: Int, rewards: DoubleA
 //        val rightSample = rightBetaDistribution.inverseCumulativeProbability(world.random.nextDouble())
 
         var bestAction = 0
-        (0..samples.size-1).forEach { if (samples[bestAction] < samples[it]) {bestAction = it}  else {bestAction = bestAction}}
+        (0..samples.size - 1).forEach {
+            if (samples[bestAction] < samples[it]) {
+                bestAction = it
+            } else {
+                bestAction = bestAction
+            }
+        }
         val (nextState, reward) = world.transition(currentState, bestAction)
 //        val (nextState, reward) = if (leftSample > rightSample) {
 //            world.transition(currentState, LEFT)
@@ -52,22 +58,22 @@ fun thompsonSampling(horizon: Int, world: Simulator, arms: Int, rewards: DoubleA
     return averageRewards
 }
 
-fun executeThompsonSampling(horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int, configuration: Configuration): List<Result> {
-    val results: MutableList<Result> = ArrayList(iterations)
+fun executeThompsonSampling(world: Simulator, simulator: Simulator, probabilities: DoubleArray, configuration: Configuration): List<Result> {
+    val results: MutableList<Result> = ArrayList(configuration.iterations)
     val expectedMaxReward = probabilities.max()!!
 
-    val rewardsList = IntStream.range(0, iterations).mapToObj {
+    val rewardsList = IntStream.range(0, configuration.iterations).mapToObj {
         thompsonSampling(configuration.horizon, world, configuration.arms, configuration.rewards)
     }
 
-    val sumOfRewards = DoubleArray(horizon)
+    val sumOfRewards = DoubleArray(configuration.horizon)
     rewardsList.forEach { rewards ->
-        (0..horizon - 1).forEach {
+        (0..configuration.horizon - 1).forEach {
             sumOfRewards[it] = rewards[it] + sumOfRewards[it]
         }
     }
 
-    val averageRewards = sumOfRewards.map { expectedMaxReward - it / iterations }
+    val averageRewards = sumOfRewards.map { expectedMaxReward - it / configuration.iterations }
 
     results.add(Result("TS", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
 

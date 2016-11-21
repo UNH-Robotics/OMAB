@@ -68,24 +68,24 @@ fun rtdp(horizon: Int, world: Simulator, simulator: Simulator, rollOutCount: Int
     return averageRewards
 }
 
-fun executeRtdp(horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int, configuration: Configuration): List<Result> {
-    val results: MutableList<Result> = ArrayList(iterations)
+fun executeRtdp(world: Simulator, simulator: Simulator, probabilities: DoubleArray, configuration: Configuration): List<Result> {
+    val results: MutableList<Result> = ArrayList(configuration.iterations)
     val rollOutCounts = intArrayOf(10)
     val expectedMaxReward = probabilities.max()!!
 
     rollOutCounts.forEach { rollOutCount ->
-        val rewardsList = IntStream.range(0, iterations).mapToObj {
-            rtdp(horizon, world, simulator, rollOutCount, 3)
+        val rewardsList = IntStream.range(0, configuration.iterations).mapToObj {
+            rtdp(configuration.horizon, world, simulator, rollOutCount, 3)
         }
 
-        val sumOfRewards = DoubleArray(horizon)
+        val sumOfRewards = DoubleArray(configuration.horizon)
         rewardsList.forEach { rewards ->
-            (0..horizon - 1).forEach {
+            (0..configuration.horizon - 1).forEach {
                 sumOfRewards[it] = rewards[it] + sumOfRewards[it]
             }
         }
 
-        val averageRewards = sumOfRewards.map { expectedMaxReward - it / iterations }
+        val averageRewards = sumOfRewards.map { expectedMaxReward - it / configuration.iterations }
 
         results.add(Result("RTDP$rollOutCount", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
     }

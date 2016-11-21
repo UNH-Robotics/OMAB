@@ -7,7 +7,9 @@ import edu.unh.cs.ai.omab.experiment.TerminationChecker
  */
 class FakeTerminationChecker : TerminationChecker {
 
-    override fun init() {}
+    override fun init() {
+    }
+
     /**
      * @brief Will never terminate.
      */
