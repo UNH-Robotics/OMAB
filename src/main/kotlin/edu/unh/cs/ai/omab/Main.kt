@@ -19,7 +19,7 @@ import kotlin.system.measureTimeMillis
 fun main(args: Array<String>) {
     println("OMAB!")
 
-    val horizon = 5
+    val horizon = 100
     val iterations = 10
 
     val configuration = Configuration(3, doubleArrayOf(0.8, 0.2, 0.2), doubleArrayOf(1.0, 1.0, 1.0), horizon)
@@ -31,11 +31,11 @@ fun main(args: Array<String>) {
 //    evaluateAlgorithm("UCT", ::uct, horizon, mdp, results)
 
 //    evaluateAlgorithm("ValueIteration", ::executeValueIteration, horizon, results, iterations, configuration)
-   evaluateSingleAlgorithm("UCB once", ::executeUcb, horizon, results, iterations, configuration)
-    evaluateAlgorithm("UCB", ::executeUcb, horizon, results, iterations, configuration)
-    evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, horizon, results, iterations, configuration)
+//   evaluateSingleAlgorithm("UCB once", ::executeUcb, horizon, results, iterations, configuration)
+    evaluate3ArmAlgorithm("UCB", ::executeUcb, horizon, results, iterations, configuration)
+    evaluate3ArmAlgorithm("Thompson Sampling", ::executeThompsonSampling, horizon, results, iterations, configuration)
 //    evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, results)
-    evaluateAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations, configuration)
+    evaluate3ArmAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations, configuration)
 //    evaluateAlgorithm("BRTDP", ::executeBrtdp, horizon, results, iterations)
 
     if (args.isNotEmpty()) {
@@ -51,11 +51,11 @@ private fun executeSingleAlgorithm(results: MutableList<Result>,
 }
 
 private fun evaluateSingleAlgorithm(algorithm: String,
-                              function: (Int, Simulator, Simulator, DoubleArray, Int, Configuration) -> List<Result>,
-                              horizon: Int,
-                              results: MutableList<Result>,
-                              iterations: Int,
-                              configuration: Configuration) {
+                                    function: (Int, Simulator, Simulator, DoubleArray, Int, Configuration) -> List<Result>,
+                                    horizon: Int,
+                                    results: MutableList<Result>,
+                                    iterations: Int,
+                                    configuration: Configuration) {
 
     val executionTime = measureTimeMillis {
         executeSingleAlgorithm(results, function, horizon, iterations, configuration)
@@ -78,17 +78,55 @@ private fun evaluateAlgorithm(algorithm: String,
     println("$algorithm executionTime:$executionTime[ms]")
 }
 
+
+private fun evaluate3ArmAlgorithm(algorithm: String,
+                                  function: (Int, Simulator, Simulator, DoubleArray, Int, Configuration) -> List<Result>,
+                                  horizon: Int,
+                                  results: MutableList<Result>,
+                                  iterations: Int,
+                                  configuration: Configuration) {
+
+    val executionTime = measureTimeMillis {
+        execute3ArmAlgorithm(results, function, horizon, iterations, configuration)
+    }
+
+    println("$algorithm executionTime:$executionTime[ms]")
+}
+
+private fun execute3ArmAlgorithm(results: MutableList<Result>,
+                                 algorithm: (horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int, Configuration) -> List<Result>,
+                                 horizon: Int, iterations: Int, configuration: Configuration) {
+    DoubleStream
+            .iterate(0.0, { i -> i + 0.1 })
+            .limit(iterations.toLong())
+            .parallel()
+            .forEach { p1 ->
+                DoubleStream
+                        .iterate(0.0, { i -> i + 0.1 })
+                        .limit(iterations.toLong())
+                        .forEach { p2 ->
+                            DoubleStream
+                                    .iterate(0.0, { i -> i + 0.1 })
+                                    .limit(iterations.toLong())
+                                    .forEach { p3 ->
+                                        results.addAll(algorithm(horizon, BanditWorld(doubleArrayOf(p1, p2, p3)), BanditSimulator(configuration.rewards), doubleArrayOf(p1, p2, p3), iterations, configuration))
+                                    }
+
+                        }
+            }
+}
+
 private fun executeAlgorithm(results: MutableList<Result>,
                              algorithm: (horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int, Configuration) -> List<Result>,
                              horizon: Int, iterations: Int, configuration: Configuration) {
     DoubleStream
             .iterate(0.0, { i -> i + 0.1 })
-            .limit(10)
+            .limit(iterations.toLong())
             .parallel()
             .forEach { p1 ->
                 DoubleStream
                         .iterate(0.0, { i -> i + 0.1 })
-                        .limit(10)
+                        .limit(iterations.toLong())
                         .forEach { p2 ->
                             results.addAll(algorithm(horizon, BanditWorld(configuration.probabilities), BanditSimulator(configuration.rewards), doubleArrayOf(p1, p2), iterations, configuration))
                         }
