@@ -1,9 +1,9 @@
 package edu.unh.cs.ai.omab
 
+//import edu.unh.cs.ai.omab.algorithms.executeRtdp
 import edu.unh.cs.ai.omab.algorithms.executeRtdp
 import edu.unh.cs.ai.omab.algorithms.executeThompsonSampling
 import edu.unh.cs.ai.omab.algorithms.executeUcb
-import edu.unh.cs.ai.omab.algorithms.executeValueIteration
 import edu.unh.cs.ai.omab.domain.BanditSimulator
 import edu.unh.cs.ai.omab.domain.BanditWorld
 import edu.unh.cs.ai.omab.domain.Simulator
@@ -13,6 +13,7 @@ import edu.unh.cs.ai.omab.experiment.toJson
 import java.io.File
 import java.lang.Math.max
 import java.util.*
+import java.util.stream.IntStream
 import kotlin.system.measureTimeMillis
 
 /**
@@ -31,14 +32,21 @@ fun main(args: Array<String>) {
 
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
 
+//    evaluateAlgorithm("OnlineValueIteration", ::onlineValueIteration, horizon, results, iterations, configuration)
+
+//    evaluateAlgorithm("UCT", ::uct, horizon, mdp, results)
+//    evaluateAlgorithm("ValueIteration", ::executeValueIteration, results, configuration)
     evaluateAlgorithm("UCB", ::executeUcb, results, configuration)
     evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, results, configuration)
+//    evaluateAlgorithm("Greedy", ::expectationMaximization, results, configuration)
     evaluateAlgorithm("RTDP", ::executeRtdp, results, configuration)
+//    evaluateAlgorithm("BRTDP", ::executeBrtdp, results, configuration)
 
     if (args.isNotEmpty()) {
         File(args[0]).bufferedWriter().use { results.toJson(it) }
     }
 }
+
 
 private fun evaluateAlgorithm(algorithm: String,
                               function: (Simulator, Simulator, DoubleArray, Configuration) -> List<Result>,
@@ -55,9 +63,17 @@ private fun evaluateAlgorithm(algorithm: String,
 private fun executeAlgorithm(results: MutableList<Result>,
                              algorithm: (world: Simulator, simulator: Simulator, DoubleArray, Configuration) -> List<Result>,
                              configuration: Configuration) {
-    configuration.experimentProbabilities.forEach {
-        results.addAll(algorithm(BanditWorld(it), BanditSimulator(configuration.rewards), it, configuration))
-    }
+
+    val experimentProbabilities = configuration.experimentProbabilities
+    IntStream.range(0, experimentProbabilities.size)
+            .parallel()
+            .forEach {
+                results.addAll(algorithm(
+                        BanditWorld(configuration.experimentProbabilities[it]),
+                        BanditSimulator(configuration.rewards),
+                        experimentProbabilities[it],
+                        configuration))
+            }
 }
 
 private fun generateProbabilities(resolution: Int, count: Int): List<DoubleArray> {
