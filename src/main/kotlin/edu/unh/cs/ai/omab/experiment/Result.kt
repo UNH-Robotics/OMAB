@@ -15,6 +15,11 @@ class Result(val algorithm: String,
     fun toJson(): String {
         return "{ \"algorithm\": \"$algorithm\", \"optimalReward\": $optimalReward, \"reward\": $reward, \"regret\": $regret, \"probabilities\": ${probabilities.toJson()}, \"regrets\": ${regrets.toJson()}}"
     }
+
+    override fun toString(): String{
+        return "algorithm: $algorithm, regret: $regret, optimalReward: $optimalReward, reward: $reward"
+
+    }
 }
 
 fun DoubleArray.toJson(): String {

@@ -29,7 +29,7 @@ fun main(args: Array<String>) {
     val horizon = 5
     val iterations = 10
 
-    val configuration = Configuration(3, doubleArrayOf(0.8,0.2,0.2), doubleArrayOf(1.0,1.0,1.0), horizon)
+    val configuration = Configuration(3, doubleArrayOf(0.8, 0.2, 0.2), doubleArrayOf(1.0, 1.0, 1.0), horizon)
 
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
 
@@ -38,6 +38,7 @@ fun main(args: Array<String>) {
 //    evaluateAlgorithm("UCT", ::uct, horizon, mdp, results)
 
 //    evaluateAlgorithm("ValueIteration", ::executeValueIteration, horizon, results, iterations, configuration)
+   evaluateSingleAlgorithm("UCB once", ::executeUcb, horizon, results, iterations, configuration)
     evaluateAlgorithm("UCB", ::executeUcb, horizon, results, iterations, configuration)
     evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, horizon, results, iterations, configuration)
 //    evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, results)
@@ -47,6 +48,27 @@ fun main(args: Array<String>) {
     if (args.isNotEmpty()) {
         File(args[0]).bufferedWriter().use { results.toJson(it) }
     }
+}
+
+private fun executeSingleAlgorithm(results: MutableList<Result>,
+                                   algorithm: (horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int, Configuration) -> List<Result>, horizon: Int, iterations: Int, configuration: Configuration) {
+
+    results.addAll(algorithm(horizon, BanditWorld(configuration.probabilities), BanditSimulator(configuration.rewards), configuration.probabilities, iterations, configuration))
+    print(results.toString())
+}
+
+private fun evaluateSingleAlgorithm(algorithm: String,
+                              function: (Int, Simulator, Simulator, DoubleArray, Int, Configuration) -> List<Result>,
+                              horizon: Int,
+                              results: MutableList<Result>,
+                              iterations: Int,
+                              configuration: Configuration) {
+
+    val executionTime = measureTimeMillis {
+        executeSingleAlgorithm(results, function, horizon, iterations, configuration)
+    }
+
+    println("$algorithm executionTime:$executionTime[ms]")
 }
 
 private fun evaluateAlgorithm(algorithm: String,
