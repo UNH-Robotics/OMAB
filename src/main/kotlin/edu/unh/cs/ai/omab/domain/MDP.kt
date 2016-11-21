@@ -32,6 +32,7 @@ data class BeliefState(val alphas: IntArray, val betas: IntArray) {
     }
 
     fun nextState(action: Int, success: Boolean): BeliefState {
+        assert(action >= 0 && action < alphas.size-1)
         val newAlphas = alphas.copyOf()
         val newBetas = betas.copyOf()
         if (success) {
@@ -72,9 +73,14 @@ class MDP(depth: Int? = null, val numberOfActions: Int) {
         return rewards[action]
     }
 
+    fun setRewards(newRewards: DoubleArray) {
+        assert(newRewards.size == rewards.size)
+        (0..newRewards.size - 1).forEach { rewards[it] = newRewards[it] }
+    }
+
     fun addStates(statesToAdd: ArrayList<BeliefState>) {
         statesToAdd.forEach {
-            val level = it.alphaSum() + it.betaSum() - 4
+            val level = it.alphaSum() + it.betaSum() - (2 * numberOfActions)
             mapsByLevel[level][it] = it
             statesByLevel[level].add(it)
             if (!states.containsKey(it)) {
@@ -105,41 +111,82 @@ class MDP(depth: Int? = null, val numberOfActions: Int) {
         if (numberOfActions == 2) {
             return generateStates2(depth, state)
         } else {
-            TODO()
+            levelGeneration.clear()
+            return generateStates(0, depth, state)
         }
     }
 
-    fun generateStatess(depth: Int, state: BeliefState, listToFill: ArrayList<BeliefState>) {
-
-        if(depth>3)
-            return
-
-        println(state)
-        for (i in 0..numberOfActions-1){
-            for(j in listOf(true, false)) {
-                generateStatess(depth + 1, state.nextState(i, j), listToFill)
+    fun generateNextLevel(state: BeliefState): ArrayList<BeliefState> {
+        val nextLevel = ArrayList<BeliefState>()
+        (0..numberOfActions - 1).forEach {
+            val action = it
+            listOf(true, false).forEach {
+                nextLevel.add(state.nextState(action, it))
             }
         }
+        return nextLevel
+    }
 
-        /*if (depth >= 0) {
-            (0..(numberOfActions * 2) - 1).forEach {
-                (0..(((numberOfActions * 2)) / 2) - 1).forEach {
-                    val alphas = state.alphas.copyOf()
-                    val betas = state.betas.copyOf()
-                    alphas[it] += 1
-                    if (depth == 0) {
-                        listToFill.add(BeliefState(alphas, state.betas))
+    private fun makeUnique(states: ArrayList<BeliefState>): ArrayList<BeliefState> {
+        val uniqueStates = ArrayList<BeliefState>()
+        states.forEach {
+            if (!uniqueStates.contains(it)) uniqueStates.add(it) else {
+            }
+        }
+        return uniqueStates
+    }
+
+    private var levelGeneration = ArrayList<BeliefState>()
+    private fun generateStates(depth: Int, level: Int, state: BeliefState): ArrayList<BeliefState> {
+        val currentLevel = ArrayList<BeliefState>()
+        currentLevel.add(state)
+        if (level == 0) {
+            return currentLevel
+        }
+
+//        println(state)
+        (0..level - 1).forEach {
+            (0..currentLevel.size - 1).forEach {
+                val currentState = currentLevel[it]
+                (0..numberOfActions - 1).forEach { action ->
+                    val levelReturn = ArrayList<BeliefState>()
+                    listOf(true, false).forEach { success ->
+                        val newState = currentState.nextState(action, success)
+                        val swapState = BeliefState(newState.betas, newState.alphas)
+                        currentLevel.add(newState)
+                        currentLevel.add(swapState)
+                        currentLevel.remove(currentState)
+                        levelGeneration.add(newState)
+                        levelGeneration.add(swapState)
                     }
-                    generateStates(depth - 1, BeliefState(alphas, state.betas), listToFill)
-                    betas[it] += 1
-                    if (depth == 0) {
-                        listToFill.add(BeliefState(state.alphas, betas))
-                    }
-                    generateStates(depth - 1, BeliefState(state.alphas, betas), listToFill)
+                    levelReturn.forEach { levelGeneration.add(it) }
+                    levelGeneration = makeUnique(levelGeneration)
                 }
             }
-        }*/
+        }
+//        return levelGeneration
+        return ArrayList(levelGeneration.filter { it.totalSum() - (2 * numberOfActions) == level })
     }
+
+    /*if (depth >= 0) {
+        (0..(numberOfActions * 2) - 1).forEach {
+            (0..(((numberOfActions * 2)) / 2) - 1).forEach {
+                val alphas = state.alphas.copyOf()
+                val betas = state.betas.copyOf()
+                alphas[it] += 1
+                if (depth == 0) {
+                    listToFill.add(BeliefState(alphas, state.betas))
+                }
+                generateStates(depth - 1, BeliefState(alphas, state.betas), listToFill)
+                betas[it] += 1
+                if (depth == 0) {
+                    listToFill.add(BeliefState(state.alphas, betas))
+                }
+                generateStates(depth - 1, BeliefState(state.alphas, betas), listToFill)
+            }
+        }
+    }*/
+
 
     fun generateStates2(depth: Int, state: BeliefState): ArrayList<BeliefState> {
         val initializedStates = ArrayList<BeliefState>()

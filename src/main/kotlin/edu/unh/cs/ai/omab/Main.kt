@@ -1,10 +1,14 @@
 package edu.unh.cs.ai.omab
 
 //import edu.unh.cs.ai.omab.algorithms.executeRtdp
+<<<<<<< HEAD
 import edu.unh.cs.ai.omab.algorithms.executeThompsonSampling
 import edu.unh.cs.ai.omab.algorithms.executeUcb
 import edu.unh.cs.ai.omab.algorithms.evaluateUct
 import edu.unh.cs.ai.omab.algorithms.executeValueIteration
+=======
+import edu.unh.cs.ai.omab.algorithms.*
+>>>>>>> master
 import edu.unh.cs.ai.omab.domain.BanditSimulator
 import edu.unh.cs.ai.omab.domain.BanditWorld
 import edu.unh.cs.ai.omab.domain.Simulator
@@ -22,21 +26,22 @@ import kotlin.system.measureTimeMillis
 fun main(args: Array<String>) {
     println("OMAB!")
 
-    val horizon = 20
+    val horizon = 5
     val iterations = 10
 
-    val configuration = Configuration(3, doubleArrayOf(1.0), doubleArrayOf(), horizon)
+    val configuration = Configuration(3, doubleArrayOf(0.8,0.2,0.2), doubleArrayOf(1.0,1.0,1.0), horizon)
 
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
 
-//    evaluateAlgorithm("OnlineValueIteration", ::onlineValueIteration, horizon, mdp, results)
+//    evaluateAlgorithm("OnlineValueIteration", ::onlineValueIteration, horizon, results, iterations, configuration)
 
 //    evaluateAlgorithm("UCT", ::uct, horizon, mdp, results)
-    evaluateAlgorithm("ValueIteration", ::executeValueIteration, horizon, results, iterations, configuration)
+
+//    evaluateAlgorithm("ValueIteration", ::executeValueIteration, horizon, results, iterations, configuration)
     evaluateAlgorithm("UCB", ::executeUcb, horizon, results, iterations, configuration)
     evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, horizon, results, iterations, configuration)
 //    evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, results)
-    //evaluateAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations)
+    evaluateAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations, configuration)
 //    evaluateAlgorithm("BRTDP", ::executeBrtdp, horizon, results, iterations)
 
     if (args.isNotEmpty()) {
@@ -70,7 +75,7 @@ private fun executeAlgorithm(results: MutableList<Result>,
                         .iterate(0.0, { i -> i + 0.1 })
                         .limit(10)
                         .forEach { p2 ->
-                            results.addAll(algorithm(horizon, BanditWorld(configuration.probabilities), BanditSimulator, doubleArrayOf(p1, p2), iterations, configuration))
+                            results.addAll(algorithm(horizon, BanditWorld(configuration.probabilities), BanditSimulator(configuration.rewards), doubleArrayOf(p1, p2), iterations, configuration))
                         }
             }
 }

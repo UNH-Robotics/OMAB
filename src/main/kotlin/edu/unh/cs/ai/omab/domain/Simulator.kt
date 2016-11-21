@@ -5,20 +5,20 @@ import java.util.*
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
-abstract class Simulator() {
+abstract class Simulator(val rewards: DoubleArray) {
     val random = Random()
     fun bernoulli(probability: Double): Boolean = random.nextDouble() <= probability
     abstract fun transition(state: BeliefState, action: Int): TransitionResult
 }
 
-object BanditSimulator : Simulator() {
+class BanditSimulator(rewards: DoubleArray) : Simulator(rewards) {
     override fun transition(state: BeliefState, action: Int): TransitionResult {
         val success = bernoulli(state.actionMean(action))
-        return TransitionResult(state.nextState(action, success), if (success) 1.0 else 0.0)
+        return TransitionResult(state.nextState(action, success), if (success) rewards[action] else 0.0)
     }
 }
 
-class BanditWorld(val probabilities: DoubleArray) : Simulator() {
+class BanditWorld(val probabilities: DoubleArray) : Simulator(rewards = doubleArrayOf()) {
     override fun transition(state: BeliefState, action: Int): TransitionResult {
         val success = probabilities.map { bernoulli(it) }
         return TransitionResult(state.nextState(action, success[action]), if (success[action]) probabilities[action] else 0.0)
