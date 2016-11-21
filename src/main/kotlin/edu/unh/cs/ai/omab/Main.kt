@@ -1,6 +1,5 @@
 package edu.unh.cs.ai.omab
 
-//import edu.unh.cs.ai.omab.algorithms.executeRtdp
 import edu.unh.cs.ai.omab.algorithms.*
 import edu.unh.cs.ai.omab.domain.BanditSimulator
 import edu.unh.cs.ai.omab.domain.BanditWorld
@@ -22,9 +21,10 @@ fun main(args: Array<String>) {
     val horizon = 100
     val iterations = 10
 
-    val configuration = Configuration(3, doubleArrayOf(0.8, 0.2, 0.2), doubleArrayOf(1.0, 1.0, 1.0), horizon)
+    val configuration = Configuration(3, doubleArrayOf(0.6, 0.4, 0.4), doubleArrayOf(1.0, 1.0, 1.0), horizon)
 
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
+    // evaluateSingleAlgorithm("UCB once", ::executeUcb, horizon, results, iterations, configuration)
 
 //    evaluateAlgorithm("OnlineValueIteration", ::onlineValueIteration, horizon, results, iterations, configuration)
 
@@ -37,6 +37,19 @@ fun main(args: Array<String>) {
 //    evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, results)
     evaluate3ArmAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations, configuration)
 //    evaluateAlgorithm("BRTDP", ::executeBrtdp, horizon, results, iterations)
+    evaluateAlgorithm("ValueIteration", ::evaluateUct, horizon, results, iterations, configuration)
+    evaluateAlgorithm("ValueIteration", ::executeValueIteration, horizon, results, iterations, configuration)
+    evaluateAlgorithm("UCB", ::executeUcb, horizon, results, iterations, configuration)
+    evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, horizon, results, iterations, configuration)
+    evaluateAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations, configuration)
+
+    // old  non-compiling functions
+
+    /*
+     *evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, results)
+     *evaluateAlgorithm("BRTDP", ::executeBrtdp, horizon, results, iterations)
+     *evaluateAlgorithm("OnlineValueIteration", ::onlineValueIteration, horizon, results, iterations, configuration)
+     */
 
     if (args.isNotEmpty()) {
         File(args[0]).bufferedWriter().use { results.toJson(it) }
