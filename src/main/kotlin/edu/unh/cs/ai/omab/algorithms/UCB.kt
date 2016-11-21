@@ -15,7 +15,7 @@ import kotlin.Double.Companion.POSITIVE_INFINITY
  * @author Bence Cserna (bence@cserna.net)
  */
 private fun upperConfidenceBounds(horizon: Int, world: Simulator, arms: Int, rewards: DoubleArray): List<Double> {
-    var mdp: MDP = MDP(numberOfActions = arms)
+    val mdp: MDP = MDP(numberOfActions = arms)
     mdp.setRewards(rewards)
     var currentState: BeliefState = mdp.startState
     val averageRewards: MutableList<Double> = ArrayList(horizon)
@@ -23,13 +23,19 @@ private fun upperConfidenceBounds(horizon: Int, world: Simulator, arms: Int, rew
 
     (0..horizon - 1).forEach { level ->
 
-        val upperConfidenceBoundsValues = (0..currentState.alphas.size-1).map {
+        val upperConfidenceBoundsValues = (0..currentState.alphas.size - 1).map {
             upperConfidenceBoundsValue(currentState.actionMean(it), currentState.actionSum(it), currentState.totalSum(), 2.0)
         }.toDoubleArray()
 
         var bestAction = 0
-        (0..upperConfidenceBoundsValues.size-1).forEach { if (upperConfidenceBoundsValues[bestAction] <
-                upperConfidenceBoundsValues[it]) {bestAction = it}  else {bestAction = bestAction}}
+        (0..upperConfidenceBoundsValues.size - 1).forEach {
+            if (upperConfidenceBoundsValues[bestAction] <
+                    upperConfidenceBoundsValues[it]) {
+                bestAction = it
+            } else {
+                bestAction = bestAction
+            }
+        }
 
 //        val leftQ = upperConfidenceBoundsValue(currentState.leftMean(), currentState.leftSum(), currentState.totalSum(), 2.0)
 //        val rightQ = upperConfidenceBoundsValue(currentState.rightMean(), currentState.rightSum(), currentState.totalSum(), 2.0)
@@ -52,9 +58,9 @@ fun upperConfidenceBoundsValue(μ: Double, t: Int, depth: Int, α: Double = 2.0)
     return if (t == 1) POSITIVE_INFINITY else μ + sqrt(α * log(t.toDouble()) / (2 * depth * (t - 1)))
 }
 
-fun executeUcb(world: Simulator, simulator: Simulator, realProbabilities: DoubleArray, configuration: Configuration): List<Result> {
+fun executeUcb(world: Simulator, simulator: Simulator, probabilities: DoubleArray, configuration: Configuration): List<Result> {
     val results: MutableList<Result> = ArrayList(configuration.iterations)
-    val expectedMaxReward = configuration.probabilities.max()!!
+    val expectedMaxReward = probabilities.max()!!
 
     val rewardsList = IntStream.range(0, configuration.iterations).mapToObj {
         upperConfidenceBounds(configuration.horizon, world, configuration.arms, configuration.rewards)
@@ -69,7 +75,7 @@ fun executeUcb(world: Simulator, simulator: Simulator, realProbabilities: Double
 
     val averageRewards = sumOfRewards.map { expectedMaxReward - it / configuration.iterations }
 
-    results.add(Result("UCB", configuration.probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
+    results.add(Result("UCB", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
 
     return results
 }

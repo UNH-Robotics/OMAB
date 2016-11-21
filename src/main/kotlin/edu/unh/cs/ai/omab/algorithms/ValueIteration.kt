@@ -76,9 +76,9 @@ fun initializeMDP(horizon: Int, arms: Int): MDP {
 }
 
 
-fun executeValueIteration(world: Simulator, simulator: Simulator, realProbabilities: DoubleArray, configuration: Configuration): List<Result> {
+fun executeValueIteration(world: Simulator, simulator: Simulator, probabilities: DoubleArray, configuration: Configuration): List<Result> {
     val results: MutableList<Result> = ArrayList(configuration.iterations)
-    val expectedMaxReward = configuration.probabilities.max()!!
+    val expectedMaxReward = probabilities.max()!!
 
     val mdp = initializeMDP(configuration.horizon, configuration.arms)
 
@@ -88,14 +88,14 @@ fun executeValueIteration(world: Simulator, simulator: Simulator, realProbabilit
 
     val sumOfRewards = DoubleArray(configuration.horizon)
     rewardsList.forEach { rewards ->
-        (0..configuration.horizon- 1).forEach {
+        (0..configuration.horizon - 1).forEach {
             sumOfRewards[it] = rewards[it] + sumOfRewards[it]
         }
     }
 
     val averageRewards = sumOfRewards.map { expectedMaxReward - it / configuration.iterations }
 
-    results.add(Result("VI", configuration.probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
+    results.add(Result("VI", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
 
     return results
 }
@@ -116,14 +116,14 @@ fun calculateLookAhead(horizon: Int): HashMap<Int, Int> {
 }
 
 fun calculateLookAhead(mdp: MDP, horizon: Int, world: Simulator,
-                       simulator: Simulator, numberOfStates: Double): HashMap<Int,Int> {
+                       simulator: Simulator, numberOfStates: Double): HashMap<Int, Int> {
 
     val stateNumberToDepth = HashMap<Int, Int>()
 
     (0..horizon).forEach {
-        val numberOfStatesGivenDepth =  (6.0* it + 11.0 * (it * it) +
+        val numberOfStatesGivenDepth = (6.0 * it + 11.0 * (it * it) +
                 6 * (it * it * it) +
-                (it * it * it * it))/24
+                (it * it * it * it)) / 24
         stateNumberToDepth[numberOfStatesGivenDepth.toInt()] = it
     }
 

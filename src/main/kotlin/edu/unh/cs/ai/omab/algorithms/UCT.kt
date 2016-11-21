@@ -1,19 +1,14 @@
 package edu.unh.cs.ai.omab.algorithms
 
-import java.util.*
-import java.util.stream.IntStream
-import kotlin.Double.Companion.NEGATIVE_INFINITY
-
-import edu.unh.cs.ai.omab.experiment.Configuration
-import edu.unh.cs.ai.omab.experiment.Result
-
-import edu.unh.cs.ai.omab.experiment.TerminationChecker
-import edu.unh.cs.ai.omab.experiment.terminationCheckers.FakeTerminationChecker
-import edu.unh.cs.ai.omab.experiment.terminationCheckers.TimeTerminationChecker
-
+import edu.unh.cs.ai.omab.domain.BeliefState
 import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
-import edu.unh.cs.ai.omab.domain.BeliefState
+import edu.unh.cs.ai.omab.experiment.Configuration
+import edu.unh.cs.ai.omab.experiment.Result
+import edu.unh.cs.ai.omab.experiment.TerminationChecker
+import edu.unh.cs.ai.omab.experiment.terminationCheckers.FakeTerminationChecker
+import java.util.*
+import java.util.stream.IntStream
 
 /**
  * Can apply UCT on any belief state given the current state and timestep
@@ -29,15 +24,15 @@ class UCTPlanner(val numberOfActions: Int, val simulator: Simulator, val alpha: 
     /**
      * A node in the UCT data structure
      *
-     * qValues[i] returns the q value of action i 
-     * n[i] the number of times it has been taken 
+     * qValues[i] returns the q value of action i
+     * n[i] the number of times it has been taken
      */
     data class UCTNode(var qValues: DoubleArray, var n: IntArray) {
 
         /**
          * Initiates with zeros for q values and frequency of actions taken except for action i, which is set to n = 1 and q value of q
          */
-        constructor(i: Int, q: Double, size: Int): this(DoubleArray(size), IntArray(size)) {
+        constructor(i: Int, q: Double, size: Int) : this(DoubleArray(size), IntArray(size)) {
             update(i, q)
         }
 
@@ -59,12 +54,12 @@ class UCTPlanner(val numberOfActions: Int, val simulator: Simulator, val alpha: 
     private var graph: MutableMap<BeliefState, UCTNode> = HashMap()
 
     /**
-    * Returns true if either max depth or horizon has been reached
-    */
+     * Returns true if either max depth or horizon has been reached
+     */
     private fun exceedsMaxDepth(depth: Int) = depth + currentTimeStep >= horizon || depth >= maxDepth
 
     /**
-     * The UCT rollout is a simulation where the actions are taken randomly 
+     * The UCT rollout is a simulation where the actions are taken randomly
      * until the horizon has been reached
      * Adds the starting point node to the UCT datastructure
      */
@@ -133,12 +128,12 @@ class UCTPlanner(val numberOfActions: Int, val simulator: Simulator, val alpha: 
 
         // loop through all UCB values and keep highest
         var bestAction = 0
-        var bestQ = upperConfidenceBoundsValue(uctNode.qValues[0], uctNode.n[0], N, (alpha * (horizon - currentTimeStep))) 
+        var bestQ = upperConfidenceBoundsValue(uctNode.qValues[0], uctNode.n[0], N, (alpha * (horizon - currentTimeStep)))
 
         var i = 1
         while (i < numberOfActions) {
 
-            var q = upperConfidenceBoundsValue(uctNode.qValues[i], uctNode.n[i], N, (alpha * (horizon - currentTimeStep))) 
+            var q = upperConfidenceBoundsValue(uctNode.qValues[i], uctNode.n[i], N, (alpha * (horizon - currentTimeStep)))
 
             if (q > bestQ) {
                 bestAction = i;
@@ -189,8 +184,8 @@ class UCTPlanner(val numberOfActions: Int, val simulator: Simulator, val alpha: 
 /**
  * Applies UCT on the provided MDP
  */
-fun executeUct(world: Simulator, simulator: Simulator, horizon: Int, configurations: Configuration, debug: Boolean): List<Double> {
-    val averageRewards: MutableList<Double> = ArrayList(horizon)
+fun executeUct(world: Simulator, simulator: Simulator, configuration: Configuration, debug: Boolean): List<Double> {
+    val averageRewards: MutableList<Double> = ArrayList(configuration.horizon)
     var sum = 0.0
 
     /* UCT parameters */
@@ -199,10 +194,10 @@ fun executeUct(world: Simulator, simulator: Simulator, horizon: Int, configurati
     val maxDepth = 20
     val alpha = 2500.0
 
-    val planner = UCTPlanner(configurations.arms, simulator, alpha, maxNumSimulations, horizon, maxDepth, debug)
-    var currentState = MDP(numberOfActions = configurations.arms).startState
+    val planner = UCTPlanner(configuration.arms, simulator, alpha, maxNumSimulations, configuration.horizon, maxDepth, debug)
+    var currentState = MDP(numberOfActions = configuration.arms).startState
 
-    (0..horizon - 1).forEach { level ->
+    (0..configuration.horizon - 1).forEach { level ->
         // select action
         terminationChecker.init()
         val action = planner.selectAction(currentState, level, terminationChecker)
@@ -221,25 +216,25 @@ fun executeUct(world: Simulator, simulator: Simulator, horizon: Int, configurati
 /**
  * Executes UCT iteration times and returns an evaluation
  */
-fun evaluateUct(horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int, configurations: Configuration): List<Result>  {
+fun evaluateUct(world: Simulator, simulator: Simulator, probabilities: DoubleArray, configuration: Configuration): List<Result> {
     val debug = false
 
-    val results: MutableList<Result> = ArrayList(iterations)
+    val results: MutableList<Result> = ArrayList(configuration.iterations)
     val expectedMaxReward = probabilities.max()!!
 
-    val rewardsList = IntStream.range(0, iterations).mapToObj {
+    val rewardsList = IntStream.range(0, configuration.iterations).mapToObj {
         if (debug) print("Executing uct iteration ${it}\n")
-        executeUct(world, simulator, horizon, configurations, debug)
+        executeUct(world, simulator, configuration, debug)
     }
 
-    val sumOfRewards = DoubleArray(horizon)
+    val sumOfRewards = DoubleArray(configuration.horizon)
     rewardsList.forEach { rewards ->
-        (0..horizon - 1).forEach {
+        (0..configuration.horizon - 1).forEach {
             sumOfRewards[it] = rewards[it] + sumOfRewards[it]
         }
     }
 
-    val averageRewards = sumOfRewards.map { expectedMaxReward - it / iterations }
+    val averageRewards = sumOfRewards.map { expectedMaxReward - it / configuration.iterations }
 
     results.add(Result("UCT", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
 

@@ -8,11 +8,17 @@ fun expectationMaximization(mdp: MDP, horizon: Int, world: Simulator, simulator:
     var currentState = mdp.startState
 
     return IntStream.iterate(0, { i -> i + 1 }).limit(horizon.toLong()).mapToDouble {
-        val means: DoubleArray = (0..currentState.alphas.size-1).map {
+        val means: DoubleArray = (0..currentState.alphas.size - 1).map {
             currentState.actionMean(it)
         }.toDoubleArray()
         var bestAction = 0
-        (0..means.size-1).forEach { if (means[bestAction] < means[it]) {bestAction = it}  else {bestAction = bestAction}}
+        (0..means.size - 1).forEach {
+            if (means[bestAction] < means[it]) {
+                bestAction = it
+            } else {
+                bestAction = bestAction
+            }
+        }
 
         val (nextState, reward) = world.transition(currentState, bestAction)
 //        val (nextState, reward) = if (currentState.leftMean() > currentState.rightMean() {

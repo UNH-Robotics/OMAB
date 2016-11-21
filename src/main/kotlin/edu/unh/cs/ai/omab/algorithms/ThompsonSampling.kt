@@ -21,11 +21,11 @@ fun thompsonSampling(horizon: Int, world: Simulator, arms: Int, rewards: DoubleA
 
     (0..horizon - 1).forEach { level ->
 
-        val distributions = (0..currentState.alphas.size-1).map {
+        val distributions = (0..currentState.alphas.size - 1).map {
             BetaDistribution(currentState.alphas[it].toDouble(), currentState.betas[it].toDouble())
         }
 
-        val samples = (0..distributions.size-1).map {
+        val samples = (0..distributions.size - 1).map {
             distributions[it].inverseCumulativeProbability(world.random.nextDouble())
         }
 
@@ -36,7 +36,13 @@ fun thompsonSampling(horizon: Int, world: Simulator, arms: Int, rewards: DoubleA
 //        val rightSample = rightBetaDistribution.inverseCumulativeProbability(world.random.nextDouble())
 
         var bestAction = 0
-        (0..samples.size-1).forEach { if (samples[bestAction] < samples[it]) {bestAction = it}  else {bestAction = bestAction}}
+        (0..samples.size - 1).forEach {
+            if (samples[bestAction] < samples[it]) {
+                bestAction = it
+            } else {
+                bestAction = bestAction
+            }
+        }
         val (nextState, reward) = world.transition(currentState, bestAction)
 //        val (nextState, reward) = if (leftSample > rightSample) {
 //            world.transition(currentState, LEFT)
@@ -52,9 +58,9 @@ fun thompsonSampling(horizon: Int, world: Simulator, arms: Int, rewards: DoubleA
     return averageRewards
 }
 
-fun executeThompsonSampling(world: Simulator, simulator: Simulator, realProbabilities: DoubleArray, configuration: Configuration): List<Result> {
+fun executeThompsonSampling(world: Simulator, simulator: Simulator, probabilities: DoubleArray, configuration: Configuration): List<Result> {
     val results: MutableList<Result> = ArrayList(configuration.iterations)
-    val expectedMaxReward = configuration.probabilities.max()!!
+    val expectedMaxReward = probabilities.max()!!
 
     val rewardsList = IntStream.range(0, configuration.iterations).mapToObj {
         thompsonSampling(configuration.horizon, world, configuration.arms, configuration.rewards)
@@ -69,7 +75,7 @@ fun executeThompsonSampling(world: Simulator, simulator: Simulator, realProbabil
 
     val averageRewards = sumOfRewards.map { expectedMaxReward - it / configuration.iterations }
 
-    results.add(Result("TS", configuration.probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
+    results.add(Result("TS", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
 
     return results
 }

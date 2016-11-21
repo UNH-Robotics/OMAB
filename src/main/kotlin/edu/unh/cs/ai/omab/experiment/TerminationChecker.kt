@@ -3,7 +3,7 @@ package edu.unh.cs.ai.omab.experiment
 interface TerminationChecker {
 
     /**
-     * @brief Called just before an agent starts planning / selecting an action 
+     * @brief Called just before an agent starts planning / selecting an action
      */
     fun init()
 

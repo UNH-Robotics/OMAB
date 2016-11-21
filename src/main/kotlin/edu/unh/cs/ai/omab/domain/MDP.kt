@@ -32,7 +32,7 @@ data class BeliefState(val alphas: IntArray, val betas: IntArray) {
     }
 
     fun nextState(action: Int, success: Boolean): BeliefState {
-        assert(action >= 0 && action < alphas.size-1)
+        assert(action >= 0 && action < alphas.size - 1)
         val newAlphas = alphas.copyOf()
         val newBetas = betas.copyOf()
         if (success) {
