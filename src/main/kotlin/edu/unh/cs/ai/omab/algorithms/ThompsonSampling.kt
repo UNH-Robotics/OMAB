@@ -52,24 +52,24 @@ fun thompsonSampling(horizon: Int, world: Simulator, arms: Int, rewards: DoubleA
     return averageRewards
 }
 
-fun executeThompsonSampling(horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int, configuration: Configuration): List<Result> {
-    val results: MutableList<Result> = ArrayList(iterations)
-    val expectedMaxReward = probabilities.max()!!
+fun executeThompsonSampling(world: Simulator, simulator: Simulator, realProbabilities: DoubleArray, configuration: Configuration): List<Result> {
+    val results: MutableList<Result> = ArrayList(configuration.iterations)
+    val expectedMaxReward = configuration.probabilities.max()!!
 
-    val rewardsList = IntStream.range(0, iterations).mapToObj {
+    val rewardsList = IntStream.range(0, configuration.iterations).mapToObj {
         thompsonSampling(configuration.horizon, world, configuration.arms, configuration.rewards)
     }
 
-    val sumOfRewards = DoubleArray(horizon)
+    val sumOfRewards = DoubleArray(configuration.horizon)
     rewardsList.forEach { rewards ->
-        (0..horizon - 1).forEach {
+        (0..configuration.horizon - 1).forEach {
             sumOfRewards[it] = rewards[it] + sumOfRewards[it]
         }
     }
 
-    val averageRewards = sumOfRewards.map { expectedMaxReward - it / iterations }
+    val averageRewards = sumOfRewards.map { expectedMaxReward - it / configuration.iterations }
 
-    results.add(Result("TS", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
+    results.add(Result("TS", configuration.probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
 
     return results
 }

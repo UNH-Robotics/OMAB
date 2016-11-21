@@ -76,26 +76,26 @@ fun initializeMDP(horizon: Int, arms: Int): MDP {
 }
 
 
-fun executeValueIteration(horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int, configuration: Configuration): List<Result> {
-    val results: MutableList<Result> = ArrayList(iterations)
-    val expectedMaxReward = probabilities.max()!!
+fun executeValueIteration(world: Simulator, simulator: Simulator, realProbabilities: DoubleArray, configuration: Configuration): List<Result> {
+    val results: MutableList<Result> = ArrayList(configuration.iterations)
+    val expectedMaxReward = configuration.probabilities.max()!!
 
-    val mdp = initializeMDP(horizon, configuration.arms)
+    val mdp = initializeMDP(configuration.horizon, configuration.arms)
 
-    val rewardsList = IntStream.range(0, iterations).mapToObj {
+    val rewardsList = IntStream.range(0, configuration.iterations).mapToObj {
         valueIteration(mdp, configuration.horizon, world)
     }
 
-    val sumOfRewards = DoubleArray(horizon)
+    val sumOfRewards = DoubleArray(configuration.horizon)
     rewardsList.forEach { rewards ->
-        (0..horizon - 1).forEach {
+        (0..configuration.horizon- 1).forEach {
             sumOfRewards[it] = rewards[it] + sumOfRewards[it]
         }
     }
 
-    val averageRewards = sumOfRewards.map { expectedMaxReward - it / iterations }
+    val averageRewards = sumOfRewards.map { expectedMaxReward - it / configuration.iterations }
 
-    results.add(Result("VI", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
+    results.add(Result("VI", configuration.probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
 
     return results
 }

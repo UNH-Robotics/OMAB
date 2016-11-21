@@ -1,5 +1,6 @@
 package edu.unh.cs.ai.omab
 
+import edu.unh.cs.ai.omab.algorithms.executeRtdp
 import edu.unh.cs.ai.omab.algorithms.executeThompsonSampling
 import edu.unh.cs.ai.omab.algorithms.executeUcb
 import edu.unh.cs.ai.omab.algorithms.executeValueIteration
@@ -29,16 +30,10 @@ fun main(args: Array<String>) {
             iterations = 10)
 
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
-    /*evaluateSingleAlgorithm("UCB once", ::executeUcb, horizon, results, iterations, configuration)*/
 
-//    evaluateAlgorithm("OnlineValueIteration", ::onlineValueIteration, horizon, results, iterations, configuration)
-//    evaluateAlgorithm("UCT", ::uct, horizon, mdp, results)
-    evaluateAlgorithm("ValueIteration", ::executeValueIteration, results, configuration)
     evaluateAlgorithm("UCB", ::executeUcb, results, configuration)
     evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, results, configuration)
-//    evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, results)
-//    evaluateAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations, configuration)
-//    evaluateAlgorithm("BRTDP", ::executeBrtdp, horizon, results, iterations)
+    evaluateAlgorithm("RTDP", ::executeRtdp, results, configuration)
 
     if (args.isNotEmpty()) {
         File(args[0]).bufferedWriter().use { results.toJson(it) }
@@ -61,7 +56,7 @@ private fun executeAlgorithm(results: MutableList<Result>,
                              algorithm: (world: Simulator, simulator: Simulator, DoubleArray, Configuration) -> List<Result>,
                              configuration: Configuration) {
     configuration.experimentProbabilities.forEach {
-        results.addAll(algorithm(BanditWorld(configuration.probabilities), BanditSimulator(configuration.rewards), it, configuration))
+        results.addAll(algorithm(BanditWorld(it), BanditSimulator(configuration.rewards), it, configuration))
     }
 }
 
