@@ -1,5 +1,6 @@
 package edu.unh.cs.ai.omab.domain
 
+import edu.unh.cs.ai.omab.utils.maxIndexAfter
 import java.util.*
 
 /**
@@ -13,7 +14,8 @@ data class BeliefState(val alphas: IntArray, val betas: IntArray) {
     fun betaSum() = betas.sum()
     fun totalSum() = alphaSum() + betaSum()
 
-    fun size() = alphas.size
+    val size: Int
+        get() = alphas.size
 
     override fun hashCode(): Int {
         var hashCode = 0
@@ -49,6 +51,34 @@ data class BeliefState(val alphas: IntArray, val betas: IntArray) {
 
     fun actionSum(action: Int): Int {
         return alphas[action] + betas[action]
+    }
+
+    /**
+     * Create a new BeliefState that is consistent with the prior knowledge.
+     */
+    fun augment(): BeliefState {
+        val augmentedAlphas = alphas.copyOf()
+        val augmentedBetas = betas.copyOf()
+
+        val probabilities = DoubleArray(size, { actionMean(it) })
+        val safe = BooleanArray(size, {false})
+
+        // We don't have to check the last state
+        (0..size - 1).forEach {
+            if (probabilities.maxIndexAfter(it) == it) {
+                // TODO check on the left side as well this should be the minimum
+                safe[it]// This is safe
+            } else {
+                // We should fix everything on the right or wait to be fixed
+                // If we fixed on the right we can check for safety again
+                // If we are safe after fix all nodes we fixed including us are safe
+            }
+
+            val lowerAlpha = alphas[it]
+            val lowerBeta = betas[it]
+        }
+
+        return BeliefState(augmentedAlphas, augmentedBetas)
     }
 }
 
