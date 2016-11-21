@@ -32,6 +32,7 @@ data class BeliefState(val alphas: IntArray, val betas: IntArray) {
     }
 
     fun nextState(action: Int, success: Boolean): BeliefState {
+        assert(action >= 0 && action < alphas.size-1)
         val newAlphas = alphas.copyOf()
         val newBetas = betas.copyOf()
         if (success) {
@@ -79,7 +80,7 @@ class MDP(depth: Int? = null, val numberOfActions: Int) {
 
     fun addStates(statesToAdd: ArrayList<BeliefState>) {
         statesToAdd.forEach {
-            val level = it.alphaSum() + it.betaSum() - 4
+            val level = it.alphaSum() + it.betaSum() - (2 * numberOfActions)
             mapsByLevel[level][it] = it
             statesByLevel[level].add(it)
             if (!states.containsKey(it)) {
@@ -139,20 +140,24 @@ class MDP(depth: Int? = null, val numberOfActions: Int) {
     private fun generateStates(depth: Int, level: Int, state: BeliefState): ArrayList<BeliefState> {
         val currentLevel = ArrayList<BeliefState>()
         currentLevel.add(state)
-//        if (depth == level) {
-//        }
+        if (level == 0) {
+            return currentLevel
+        }
 
 //        println(state)
         (0..level - 1).forEach {
             (0..currentLevel.size - 1).forEach {
                 val currentState = currentLevel[it]
-                (0..numberOfActions - 1).forEach { i ->
+                (0..numberOfActions - 1).forEach { action ->
                     val levelReturn = ArrayList<BeliefState>()
-                    listOf(true, false).forEach { j ->
-                        val newState = currentState.nextState(i, j)
+                    listOf(true, false).forEach { success ->
+                        val newState = currentState.nextState(action, success)
+                        val swapState = BeliefState(newState.betas, newState.alphas)
                         currentLevel.add(newState)
+                        currentLevel.add(swapState)
                         currentLevel.remove(currentState)
                         levelGeneration.add(newState)
+                        levelGeneration.add(swapState)
                     }
                     levelReturn.forEach { levelGeneration.add(it) }
                     levelGeneration = makeUnique(levelGeneration)

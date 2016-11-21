@@ -58,8 +58,8 @@ fun valueIteration(mdp: MDP, horizon: Int, world: Simulator): List<Double> {
     return averageRewards
 }
 
-fun initializeMDP(horizon: Int): MDP {
-    val mdp = MDP(horizon, numberOfActions = 2)
+fun initializeMDP(horizon: Int, arms: Int): MDP {
+    val mdp = MDP(horizon, numberOfActions = arms)
 
     (0..horizon).forEach {
         val generatedDepthStates: ArrayList<BeliefState> = mdp.generateStates(it, mdp.startState)
@@ -80,10 +80,10 @@ fun executeValueIteration(horizon: Int, world: Simulator, simulator: Simulator, 
     val results: MutableList<Result> = ArrayList(iterations)
     val expectedMaxReward = probabilities.max()!!
 
-    val mdp = initializeMDP(horizon)
+    val mdp = initializeMDP(horizon, configuration.arms)
 
     val rewardsList = IntStream.range(0, iterations).mapToObj {
-        valueIteration(mdp, horizon, world)
+        valueIteration(mdp, configuration.horizon, world)
     }
 
     val sumOfRewards = DoubleArray(horizon)
