@@ -24,16 +24,21 @@ fun main(args: Array<String>) {
     val configuration = Configuration(3, doubleArrayOf(0.6, 0.4, 0.4), doubleArrayOf(1.0, 1.0, 1.0), horizon)
 
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
-    /*evaluateSingleAlgorithm("UCB once", ::executeUcb, horizon, results, iterations, configuration)*/
+    // evaluateSingleAlgorithm("UCB once", ::executeUcb, horizon, results, iterations, configuration)
 
-    evaluateAlgorithm("OnlineValueIteration", ::onlineValueIteration, horizon, results, iterations, configuration)
-    evaluateAlgorithm("UCT", ::uct, horizon, mdp, results)
+    evaluateAlgorithm("ValueIteration", ::evaluateUct, horizon, results, iterations, configuration)
     evaluateAlgorithm("ValueIteration", ::executeValueIteration, horizon, results, iterations, configuration)
     evaluateAlgorithm("UCB", ::executeUcb, horizon, results, iterations, configuration)
     evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, horizon, results, iterations, configuration)
-    evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, results)
     evaluateAlgorithm("RTDP", ::executeRtdp, horizon, results, iterations, configuration)
-    evaluateAlgorithm("BRTDP", ::executeBrtdp, horizon, results, iterations)
+
+    // old  non-compiling functions
+
+    /*
+     *evaluateAlgorithm("Greedy", ::expectationMaximization, horizon, results)
+     *evaluateAlgorithm("BRTDP", ::executeBrtdp, horizon, results, iterations)
+     *evaluateAlgorithm("OnlineValueIteration", ::onlineValueIteration, horizon, results, iterations, configuration)
+     */
 
     if (args.isNotEmpty()) {
         File(args[0]).bufferedWriter().use { results.toJson(it) }
