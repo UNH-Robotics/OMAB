@@ -33,3 +33,20 @@ fun DoubleArray.maxIndex(): Int? {
     }
     return index
 }
+
+/**
+ * Returns the index of largest element or `null` if there are no elements.
+ */
+fun DoubleArray.maxIndexAfter(inclusiveIndex: Int): Int? {
+    if (isEmpty()) return null
+    var max = this[inclusiveIndex]
+    var index = inclusiveIndex
+    for (i in inclusiveIndex..lastIndex) {
+        val e = this[i]
+        if (max < e) {
+            max = e
+            index = i
+        }
+    }
+    return index
+}
