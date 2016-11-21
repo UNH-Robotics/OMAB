@@ -9,7 +9,7 @@ import java.util.stream.IntStream
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
-class Rtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, val horizon: Int) {
+class Rtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, val horizon: Int, val expectedMaxReward: Double) {
     private var graph: MutableMap<BeliefState, BeliefState> = HashMap()
 
     fun rollOut(sourceState: BeliefState, currentDepth: Int) {
@@ -19,7 +19,12 @@ class Rtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, val
         if (!graph.containsKey(sourceState)) graph.put(sourceState, sourceState)
         val statesToAdd = mdp.generateNextLevel(sourceState)
 
-        statesToAdd.forEach { mdp.addStates(mdp.generateNextLevel(it)) }
+        statesToAdd.forEach {
+            it.utility = expectedMaxReward
+            var successors = mdp.generateNextLevel(it)
+            successors.forEach { it.utility = expectedMaxReward }
+            mdp.addStates(successors)
+        }
 
         mdp.addStates(statesToAdd)
         val stack = Stack<BeliefState>()
@@ -45,12 +50,12 @@ class Rtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, val
     }
 }
 
-fun rtdp(horizon: Int, world: Simulator, simulator: Simulator, rollOutCount: Int, numberOfActions: Int): List<Double> {
+fun rtdp(horizon: Int, world: Simulator, simulator: Simulator, rollOutCount: Int, numberOfActions: Int, expectedMaxReward: Double): List<Double> {
     val mdp = MDP(horizon + 1, numberOfActions)
-    val rtdp = Rtdp(mdp, simulator, rollOutCount, horizon)
+    val rtdp = Rtdp(mdp, simulator, rollOutCount, horizon, expectedMaxReward)
 
 
-    val averageRewards: MutableList<Double> = ArrayList(horizon)
+    val rewards: MutableList<Double> = ArrayList(horizon)
     var sum = 0.0
 
     var currentState = mdp.startState
@@ -61,11 +66,11 @@ fun rtdp(horizon: Int, world: Simulator, simulator: Simulator, rollOutCount: Int
         val (nextState, reward) = world.transition(currentState, bestAction)
 
         currentState = nextState
-        sum += reward
-        averageRewards.add(sum / (level + 1.0))
+        sum = reward
+        rewards.add(sum)// / (level + 1.0))
     }
 
-    return averageRewards
+    return rewards
 }
 
 fun executeRtdp(world: Simulator, simulator: Simulator, probabilities: DoubleArray, configuration: Configuration): List<Result> {
@@ -75,7 +80,7 @@ fun executeRtdp(world: Simulator, simulator: Simulator, probabilities: DoubleArr
 
     rollOutCounts.forEach { rollOutCount ->
         val rewardsList = IntStream.range(0, configuration.iterations).mapToObj {
-            rtdp(configuration.horizon, world, simulator, rollOutCount, configuration.arms)
+            rtdp(configuration.horizon, world, simulator, rollOutCount, configuration.arms, expectedMaxReward)
         }
 
         val sumOfRewards = DoubleArray(configuration.horizon)
@@ -85,9 +90,9 @@ fun executeRtdp(world: Simulator, simulator: Simulator, probabilities: DoubleArr
             }
         }
 
-        val averageRewards = sumOfRewards.map { expectedMaxReward - it / configuration.iterations }
+        val averageRewards = sumOfRewards.map { (expectedMaxReward) - it / configuration.iterations }
 
-        results.add(Result("RTDP$rollOutCount", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
+        results.add(Result("RTDP $rollOutCount", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
     }
 
     return results
