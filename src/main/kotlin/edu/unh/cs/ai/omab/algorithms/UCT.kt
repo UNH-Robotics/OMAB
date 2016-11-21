@@ -21,7 +21,7 @@ import edu.unh.cs.ai.omab.domain.BeliefState
  * Assumes the Bandit problem with 2 arms and is meant to solve the problem
  * where the expected reward of each arm is unknown and represented as a belief state
  */
-class UCTPlanner(val numberOfActions: Int, val simulator: Simulator, val alpha: Double, val numSimulations: Int, val horizon: Int, val maxDepth: Int) {
+class UCTPlanner(val numberOfActions: Int, val simulator: Simulator, val alpha: Double, val numSimulations: Int, val horizon: Int, val maxDepth: Int, val debug: Boolean = false) {
 
     private val random = Random()
     private var currentTimeStep = 0
@@ -69,7 +69,8 @@ class UCTPlanner(val numberOfActions: Int, val simulator: Simulator, val alpha: 
      * Adds the starting point node to the UCT datastructure
      */
     private fun rollout(state: BeliefState, depth: Int): Double {
-        print("In rollout starting at depth ${depth}\n")
+        if (debug) print("In rollout starting at depth ${depth}\n")
+
         // base case
         if (exceedsMaxDepth(depth)) {
             return 0.0
@@ -93,7 +94,7 @@ class UCTPlanner(val numberOfActions: Int, val simulator: Simulator, val alpha: 
         // add new node to datastructure
         graph.put(state, UCTNode(firstAction, rolloutReturn.toDouble(), numberOfActions))
 
-        print("Ended rollout at depth ${currentDepth} with return ${rolloutReturn.toDouble()} \n")
+        if (debug) print("Ended rollout at depth ${currentDepth} with return action ${firstAction} for return of ${rolloutReturn.toDouble()} \n")
         return rolloutReturn.toDouble()
     }
 
@@ -103,7 +104,7 @@ class UCTPlanner(val numberOfActions: Int, val simulator: Simulator, val alpha: 
      *
      */
     private fun recurTreeSearch(state: BeliefState, depth: Int): Double {
-        print("In tree at depth ${depth}\n")
+        if (debug) print("In tree at depth ${depth}\n")
 
         // base case
         if (exceedsMaxDepth(depth)) {
@@ -133,7 +134,7 @@ class UCTPlanner(val numberOfActions: Int, val simulator: Simulator, val alpha: 
         // loop through all UCB values and keep highest
         var bestAction = 0
         var bestQ = upperConfidenceBoundsValue(uctNode.qValues[0], uctNode.n[0], N, (alpha * (horizon - currentTimeStep))) 
-        
+
         var i = 1
         while (i < numberOfActions) {
 
@@ -147,7 +148,8 @@ class UCTPlanner(val numberOfActions: Int, val simulator: Simulator, val alpha: 
             i++
         }
 
-        print("Selectin action ${bestAction} from node ${uctNode}\n")
+        if (debug) print("Selectin action ${bestAction} from node ${uctNode}\n")
+
         return bestAction;
     }
 
@@ -162,7 +164,7 @@ class UCTPlanner(val numberOfActions: Int, val simulator: Simulator, val alpha: 
 
         var count = 0
         while (count++ < numSimulations && !terminationChecker.reachedTermination()) {
-            print("Running simulation ${count}\n")
+            if (debug) print("Running simulation ${count} with root node ${graph[rootState]}\n")
             recurTreeSearch(rootState, 0)
         }
     }
@@ -179,7 +181,7 @@ class UCTPlanner(val numberOfActions: Int, val simulator: Simulator, val alpha: 
         val rootQNode = graph[rootState] ?:
                 throw RuntimeException("UCT did not create any Q values associated with the rootState")
 
-        print("rootQNode before selecting action is ${rootQNode}\n")
+        if (debug) print("rootQNode before selecting action is ${rootQNode}\n")
         return rootQNode.qValues.indexOf(rootQNode.qValues.max()!!)
     }
 }
@@ -187,27 +189,26 @@ class UCTPlanner(val numberOfActions: Int, val simulator: Simulator, val alpha: 
 /**
  * Applies UCT on the provided MDP
  */
-fun executeUct(world: Simulator, simulator: Simulator, horizon: Int, configurations: Configuration): List<Double> {
+fun executeUct(world: Simulator, simulator: Simulator, horizon: Int, configurations: Configuration, debug: Boolean): List<Double> {
     val averageRewards: MutableList<Double> = ArrayList(horizon)
     var sum = 0.0
 
     /* UCT parameters */
     val terminationChecker = FakeTerminationChecker()
-    val maxNumSimulations = 1000
-    val maxDepth = horizon
-    val alpha = 10000.0
+    val maxNumSimulations = 100
+    val maxDepth = 20
+    val alpha = 2500.0
 
-    val planner = UCTPlanner(configurations.arms, simulator, alpha, maxNumSimulations, horizon, maxDepth)
+    val planner = UCTPlanner(configurations.arms, simulator, alpha, maxNumSimulations, horizon, maxDepth, debug)
     var currentState = MDP(numberOfActions = configurations.arms).startState
 
     (0..horizon - 1).forEach { level ->
-        print("Running uct at timestep ${level}\n")
         // select action
         terminationChecker.init()
         val action = planner.selectAction(currentState, level, terminationChecker)
 
         // apply action
-        print("Taking action ${action} in real world on ${currentState}")
+        if (debug) print("Taking action ${action} in real world on ${currentState}\n")
         val (nextState, reward) = world.transition(currentState, action)
         currentState = nextState
         sum += reward
@@ -221,12 +222,14 @@ fun executeUct(world: Simulator, simulator: Simulator, horizon: Int, configurati
  * Executes UCT iteration times and returns an evaluation
  */
 fun evaluateUct(horizon: Int, world: Simulator, simulator: Simulator, probabilities: DoubleArray, iterations: Int, configurations: Configuration): List<Result>  {
+    val debug = false
+
     val results: MutableList<Result> = ArrayList(iterations)
     val expectedMaxReward = probabilities.max()!!
 
     val rewardsList = IntStream.range(0, iterations).mapToObj {
-        print("Executing uct iteration ${it}\n")
-        executeUct(world, simulator, horizon, configurations)
+        if (debug) print("Executing uct iteration ${it}\n")
+        executeUct(world, simulator, horizon, configurations, debug)
     }
 
     val sumOfRewards = DoubleArray(horizon)
