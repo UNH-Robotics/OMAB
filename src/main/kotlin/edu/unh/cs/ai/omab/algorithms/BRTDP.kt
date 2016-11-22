@@ -25,7 +25,7 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
         if(!graph.containsKey(state)) {
             graph.put(state, state)
             lowerBound[state] = 0.0
-            upperBound[state] = horizon * 1.0
+            upperBound[state] = (horizon - (state.totalSum()-mdp.startState.totalSum())) * 1.0
         }
     }
 
@@ -85,12 +85,16 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
         var state = startState
         val stack = Stack<BeliefState>()
 
-        for(i in 0..horizon){
+        for(i in 0..horizon-1){
             stack.push(state)
             initBoundsIfNeeded(state)
             upperBound[state] = getBound(state, true)
             lowerBound[state] = getBound(state, false)
 
+            val up = upperBound[state]
+            val low = lowerBound[state]
+
+            //println("up: ${upperBound[state]}, low: ${lowerBound[state]}")
             val (successorStates, successorValues) = getSuccessors(state)
             val sumSuccessorValues = successorValues.sum()
 
@@ -134,9 +138,9 @@ fun brtdp(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator, rollOu
 
     val brtdp = Brtdp(mdp, simulator, simulationCount, horizon, eps, T, configuration)
 
-    brtdp.simulate(currentState, 0)
+    //brtdp.simulate(currentState, 0)
 
-    /*(0..horizon - 1).forEach { level ->
+    (0..horizon - 1).forEach { level ->
         brtdp.simulate(currentState, level)
         bellmanUtilityUpdate(currentState, mdp)
         val (bestAction, bestReward) = selectBestAction(currentState, mdp)
@@ -147,7 +151,7 @@ fun brtdp(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator, rollOu
         currentState = nextState
         sum += reward
         averageRewards.add(sum / (level + 1.0))
-    }*/
+    }
 
     return averageRewards //Need to make sure about the return value & need to implement the online assumption
 }
@@ -159,9 +163,9 @@ fun executeBrtdp(world: Simulator, simulator: Simulator, probabilities: DoubleAr
 
     val mdp = MDP(configuration.horizon + 1, configuration.arms)
 
-    brtdp(mdp, configuration.horizon, world, simulator, 20, configuration)
+    //brtdp(mdp, configuration.horizon, world, simulator, 20, configuration)
 
-    /*rollOutCounts.forEach { rollOutCount ->
+    rollOutCounts.forEach { rollOutCount ->
         val rewardsList = IntStream.range(0, configuration.horizon).mapToObj {
             brtdp(mdp, configuration.horizon, world, simulator, rollOutCount, configuration)
         }
@@ -179,7 +183,7 @@ fun executeBrtdp(world: Simulator, simulator: Simulator, probabilities: DoubleAr
                 "averageRewards.last(): ${averageRewards.last()}, averageRewards: $averageRewards")
 
         results.add(Result("BRTDP: $rollOutCount", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
-    }*/
+    }
 
     return results
 }
