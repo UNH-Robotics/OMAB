@@ -84,7 +84,7 @@ data class BeliefState(val alphas: IntArray, val betas: IntArray) {
 
 class MDP(depth: Int? = null, val numberOfActions: Int) {
 
-
+    val depth = depth
     val states: MutableMap<BeliefState, BeliefState> = HashMap()
     private val mapsByLevel: Array<MutableMap<BeliefState, BeliefState>>
     private val statesByLevel: Array<MutableList<BeliefState>>
