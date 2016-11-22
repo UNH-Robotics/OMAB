@@ -5,6 +5,7 @@ import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
 import edu.unh.cs.ai.omab.experiment.Configuration
 import edu.unh.cs.ai.omab.experiment.Result
+import edu.unh.cs.ai.omab.utils.sampleCorrection
 import org.apache.commons.math3.distribution.BetaDistribution
 import java.util.*
 import java.util.stream.IntStream
@@ -12,7 +13,7 @@ import java.util.stream.IntStream
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
-fun thompsonSampling(horizon: Int, world: Simulator, arms: Int, rewards: DoubleArray): List<Double> {
+fun thompsonSampling(horizon: Int, world: Simulator, arms: Int, rewards: DoubleArray, specialSauce: Boolean): List<Double> {
     val mdp: MDP = MDP(numberOfActions = arms)
     var currentState: BeliefState = mdp.startState
     mdp.setRewards(rewards)
@@ -35,6 +36,8 @@ fun thompsonSampling(horizon: Int, world: Simulator, arms: Int, rewards: DoubleA
 //        val leftSample = leftBetaDistribution.inverseCumulativeProbability(world.random.nextDouble())
 //        val rightSample = rightBetaDistribution.inverseCumulativeProbability(world.random.nextDouble())
 
+
+
         var bestAction = 0
         (0..samples.size - 1).forEach {
             if (samples[bestAction] < samples[it]) {
@@ -43,6 +46,14 @@ fun thompsonSampling(horizon: Int, world: Simulator, arms: Int, rewards: DoubleA
                 bestAction = bestAction
             }
         }
+
+        if(specialSauce) {
+            val newTransitions = sampleCorrection(currentState)
+            if(!newTransitions[0].isNaN()) {
+                world.updateTransitionProbabilities(sampleCorrection(currentState))
+            }
+        }
+
         val (nextState, reward) = world.transition(currentState, bestAction)
 //        val (nextState, reward) = if (leftSample > rightSample) {
 //            world.transition(currentState, LEFT)
@@ -51,8 +62,8 @@ fun thompsonSampling(horizon: Int, world: Simulator, arms: Int, rewards: DoubleA
 //        }
 
         currentState = nextState
-        sum = reward
-        rewards.add(sum)// / (level + 1.0))
+        sum += reward
+        rewards.add(sum / (level + 1.0))
     }
 
     return rewards
@@ -63,7 +74,7 @@ fun executeThompsonSampling(world: Simulator, simulator: Simulator, probabilitie
     val expectedMaxReward = probabilities.max()!!
 
     val rewardsList = IntStream.range(0, configuration.iterations).mapToObj {
-        thompsonSampling(configuration.horizon, world, configuration.arms, configuration.rewards)
+        thompsonSampling(configuration.horizon, world, configuration.arms, configuration.rewards, configuration.specialSauce)
     }
 
     val sumOfRewards = DoubleArray(configuration.horizon)
@@ -73,9 +84,11 @@ fun executeThompsonSampling(world: Simulator, simulator: Simulator, probabilitie
         }
     }
 
-    val averageRewards = sumOfRewards.map { (expectedMaxReward) - it / configuration.iterations }
-
-    results.add(Result("TS", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
+    val averageRegret = sumOfRewards.mapIndexed { level, reward -> (expectedMaxReward) - reward / configuration.iterations / level}
+    val cumSumRegret = sumOfRewards.mapIndexed { level, reward -> (expectedMaxReward) * level - reward / configuration.iterations }
+    var sauceFlag = ""
+    if (configuration.specialSauce) sauceFlag = "SS" else sauceFlag = sauceFlag
+    results.add(Result("TS $sauceFlag", probabilities, expectedMaxReward, averageRegret.last(), expectedMaxReward - averageRegret.last(), averageRegret, cumSumRegret))
 
     return results
 }

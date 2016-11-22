@@ -55,8 +55,8 @@ private fun upperConfidenceBounds(horizon: Int, world: Simulator, arms: Int, rew
 
         val (nextState, reward) = world.transition(currentState, bestAction)
         currentState = nextState
-        sum = reward
-        rewards.add(sum)// / (level + 1.0))
+        sum += reward
+        rewards.add(sum)
     }
 //    println(rewards)
     return rewards
@@ -81,13 +81,12 @@ fun executeUcb(world: Simulator, simulator: Simulator, probabilities: DoubleArra
         }
     }
 
-//    sumOfRewards.map(::println)
-
-    val averageRewards = sumOfRewards.map { (expectedMaxReward) - it / configuration.iterations }
+    val averageRegret = sumOfRewards.mapIndexed { level, reward -> (expectedMaxReward) - reward / configuration.iterations / level}
+    val cumSumRegret = sumOfRewards.mapIndexed { level, reward -> (expectedMaxReward) * level - reward / configuration.iterations }
 
     var sauceFlag = ""
     if (configuration.specialSauce) sauceFlag = "SS" else sauceFlag = sauceFlag
-    results.add(Result("UCB $sauceFlag", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
+    results.add(Result("UCB $sauceFlag", probabilities, expectedMaxReward, averageRegret.last(), expectedMaxReward - averageRegret.last(), averageRegret, cumSumRegret))
 
     return results
 }

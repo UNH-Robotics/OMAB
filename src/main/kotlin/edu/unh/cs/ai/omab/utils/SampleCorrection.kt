@@ -14,7 +14,7 @@ fun sampleCorrection(state: BeliefState): DoubleArray {
 }
 
 private fun sampleFrom(alphas: IntArray, betas: IntArray): DoubleArray {
-    val sampleNumber = 10
+    val sampleNumber = 25
     val random = Random()
     val distributions = (0..alphas.size - 1).map {
         BetaDistribution(alphas[it].toDouble(), betas[it].toDouble())
