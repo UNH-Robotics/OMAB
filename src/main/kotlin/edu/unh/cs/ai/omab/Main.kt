@@ -1,7 +1,9 @@
 package edu.unh.cs.ai.omab
 
 //import edu.unh.cs.ai.omab.algorithms.executeRtdp
-import edu.unh.cs.ai.omab.algorithms.executeBrtdp
+import edu.unh.cs.ai.omab.algorithms.executeRtdp
+import edu.unh.cs.ai.omab.algorithms.executeThompsonSampling
+import edu.unh.cs.ai.omab.algorithms.executeUcb
 import edu.unh.cs.ai.omab.domain.BanditSimulator
 import edu.unh.cs.ai.omab.domain.BanditWorld
 import edu.unh.cs.ai.omab.domain.Simulator
@@ -9,6 +11,7 @@ import edu.unh.cs.ai.omab.experiment.Configuration
 import edu.unh.cs.ai.omab.experiment.Result
 import edu.unh.cs.ai.omab.experiment.toJson
 import java.io.File
+import java.lang.Math.exp
 import java.lang.Math.max
 import java.util.*
 import java.util.stream.IntStream
@@ -43,12 +46,12 @@ fun main(args: Array<String>) {
 
 //    evaluateAlgorithm("UCT", ::uct, horizon, mdp, results)
 //    evaluateAlgorithm("ValueIteration", ::executeValueIteration, results, configuration)
-//    evaluateAlgorithm("UCB", ::executeUcb, results, configuration)
-//    evaluateAlgorithm("UCB SS", ::executeUcb, results, configurationSS)
+    evaluateAlgorithm("UCB", ::executeUcb, results, configuration)
+    evaluateAlgorithm("UCB SS", ::executeUcb, results, configurationSS)
 //    evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, results, configuration)
 //    evaluateAlgorithm("Greedy", ::expectationMaximization, results, configuration)
 //    evaluateAlgorithm("RTDP", ::executeRtdp, results, configuration)
-    evaluateAlgorithm("BRTDP", ::executeBrtdp, results, configuration)
+//    evaluateAlgorithm("BRTDP", ::executeBrtdp, results, configuration)
 
     if (args.isNotEmpty()) {
         File(args[0]).bufferedWriter().use { results.toJson(it) }
