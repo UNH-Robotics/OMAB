@@ -28,8 +28,12 @@ fun main(args: Array<String>) {
 //    }
 
 
+(0..10).forEach { i->
+    (0..10).forEach { j ->
 
-    val nextLevel = sampleCorrection(BeliefState(intArrayOf(1,1,1), intArrayOf(1,1,1)))
+        val nextLevel = sampleCorrection(BeliefState(intArrayOf(1+i,1+j), intArrayOf(1+i,1+j)))
+    }
+}
 //    println(nextLevel)
 
 }

@@ -25,18 +25,16 @@ fun main(args: Array<String>) {
 
     val configuration = Configuration(
             arms = 3,
-            probabilities = doubleArrayOf(0.8, 0.2, 0.2),
             rewards = doubleArrayOf(1.0, 1.0, 1.0),
-            horizon = 50,
+            horizon = 10,
             experimentProbabilities = generateProbabilities(50, 3),
             iterations = 5,
             specialSauce = false)
 
     val configurationSS = Configuration(
             arms = 3,
-            probabilities = doubleArrayOf(0.8, 0.2, 0.2),
             rewards = doubleArrayOf(1.0, 1.0, 1.0),
-            horizon = 50,
+            horizon = 10,
             experimentProbabilities = generateProbabilities(50, 3),
             iterations = 5,
             specialSauce = true)
@@ -48,7 +46,8 @@ fun main(args: Array<String>) {
 //    evaluateAlgorithm("ValueIteration", ::executeValueIteration, results, configuration)
     evaluateAlgorithm("UCB", ::executeUcb, results, configuration)
     evaluateAlgorithm("UCB SS", ::executeUcb, results, configurationSS)
-//    evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, results, configuration)
+    evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, results, configuration)
+    evaluateAlgorithm("Thompson Sampling SS", ::executeThompsonSampling, results, configurationSS)
 //    evaluateAlgorithm("Greedy", ::expectationMaximization, results, configuration)
 //    evaluateAlgorithm("RTDP", ::executeRtdp, results, configuration)
 //    evaluateAlgorithm("BRTDP", ::executeBrtdp, results, configuration)

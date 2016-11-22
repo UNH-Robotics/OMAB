@@ -55,8 +55,8 @@ private fun upperConfidenceBounds(horizon: Int, world: Simulator, arms: Int, rew
 
         val (nextState, reward) = world.transition(currentState, bestAction)
         currentState = nextState
-        sum = reward
-        rewards.add(sum)// / (level + 1.0))
+        sum += reward
+        rewards.add(sum / (level + 1.0))
     }
 //    println(rewards)
     return rewards

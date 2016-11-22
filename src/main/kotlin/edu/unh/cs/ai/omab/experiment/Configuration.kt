@@ -7,7 +7,6 @@ import com.sun.org.apache.xpath.internal.operations.Bool
  */
 class Configuration(
         val arms: Int,
-        val probabilities: DoubleArray,
         val rewards: DoubleArray,
         val horizon: Int,
         val experimentProbabilities: List<DoubleArray>,
