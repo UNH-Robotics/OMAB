@@ -23,7 +23,7 @@ def regret_box_plot(experiments):
 
 
 def regret_plot(data):
-    regret_series = data[['algorithm', 'regrets']].groupby('algorithm').apply(list_average, 'regrets')
+    regret_series = data[['algorithm', 'regrets']].groupby('algorithm').apply(list_average_cum_sum, 'regrets')
     values = []
     for row in regret_series.values:
         values.append([value for value in row])
@@ -53,6 +53,13 @@ def list_average(group, key):
     return [sum(col) / float(len(col)) for col in zip(*group[key])]
 
 
+def list_average_cum_sum(group, key):
+    averages = [sum(col) / float(len(col)) for col in zip(*group[key])]
+    cum_sums = [averages[x] * (1 + x) for x in range(len(averages))]
+
+    return cum_sums
+
+
 def configure_sns():
     sns.set_style("white")
 
@@ -60,13 +67,10 @@ def configure_sns():
 def main():
     configure_sns()
     data = DataFrame(read_data("../results/result_vi_ts_ucb_100.dat"))
-    data2 = DataFrame(read_data("../results/result_rtdp_h80.dat"))
-
-
-
-# regret_box_plot(data)
+    # data2 = DataFrame(read_data("../results/result_rtdp_h80.dat"))
+    # regret_box_plot(data)
     # data.set_index('algorithm', inplace=True)
-    data = data.append(data2, ignore_index=True)
+    # data = data.append(data2, ignore_index=True)
     regret_plot(data)
 
 
