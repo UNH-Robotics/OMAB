@@ -1,5 +1,6 @@
 package edu.unh.cs.ai.omab.algorithms
 
+import edu.unh.cs.ai.omab.utils.maxIndex
 import edu.unh.cs.ai.omab.domain.BeliefState
 import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
@@ -177,7 +178,9 @@ class UCTPlanner(val numberOfActions: Int, val simulator: Simulator, val alpha: 
                 throw RuntimeException("UCT did not create any Q values associated with the rootState")
 
         if (debug) print("rootQNode before selecting action is ${rootQNode}\n")
-        return rootQNode.qValues.indexOf(rootQNode.qValues.max()!!)
+
+
+        return rootQNode.qValues.maxIndex() ?: throw RuntimeException("Somehow rootNode was created but no q values were attached")
     }
 }
 
