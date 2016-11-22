@@ -26,17 +26,17 @@ fun main(args: Array<String>) {
     val configuration = Configuration(
             arms = 3,
             rewards = doubleArrayOf(1.0, 1.0, 1.0),
-            horizon = 10,
+            horizon = 100,
             experimentProbabilities = generateProbabilities(50, 3),
-            iterations = 5,
+            iterations = 10,
             specialSauce = false)
 
     val configurationSS = Configuration(
             arms = 3,
             rewards = doubleArrayOf(1.0, 1.0, 1.0),
-            horizon = 10,
+            horizon = 100,
             experimentProbabilities = generateProbabilities(50, 3),
-            iterations = 5,
+            iterations = 10,
             specialSauce = true)
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
 

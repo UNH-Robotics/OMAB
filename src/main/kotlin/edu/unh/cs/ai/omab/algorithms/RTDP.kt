@@ -3,6 +3,7 @@ package edu.unh.cs.ai.omab.algorithms
 import edu.unh.cs.ai.omab.domain.*
 import edu.unh.cs.ai.omab.experiment.Configuration
 import edu.unh.cs.ai.omab.experiment.Result
+import edu.unh.cs.ai.omab.utils.sampleCorrection
 import java.util.*
 import java.util.stream.IntStream
 
@@ -50,7 +51,7 @@ class Rtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, val
     }
 }
 
-fun rtdp(horizon: Int, world: Simulator, simulator: Simulator, rollOutCount: Int, numberOfActions: Int, expectedMaxReward: Double): List<Double> {
+fun rtdp(horizon: Int, world: Simulator, simulator: Simulator, rollOutCount: Int, numberOfActions: Int, expectedMaxReward: Double, specialSauce: Boolean): List<Double> {
     val mdp = MDP(horizon + 1, numberOfActions)
     val rtdp = Rtdp(mdp, simulator, rollOutCount, horizon, expectedMaxReward)
 
@@ -62,7 +63,16 @@ fun rtdp(horizon: Int, world: Simulator, simulator: Simulator, rollOutCount: Int
     (0..horizon - 1).forEach { level ->
         rtdp.simulate(currentState, level)
         bellmanUtilityUpdate(currentState, mdp)
+
         val (bestAction, bestReward) = selectBestAction(currentState, mdp)
+
+        if(specialSauce) {
+            val newTransitions = sampleCorrection(currentState)
+            if(!newTransitions[0].isNaN()) {
+                world.updateTransitionProbabilities(sampleCorrection(currentState))
+            }
+        }
+
         val (nextState, reward) = world.transition(currentState, bestAction)
 
         currentState = nextState
@@ -80,7 +90,7 @@ fun executeRtdp(world: Simulator, simulator: Simulator, probabilities: DoubleArr
 
     rollOutCounts.forEach { rollOutCount ->
         val rewardsList = IntStream.range(0, configuration.iterations).mapToObj {
-            rtdp(configuration.horizon, world, simulator, rollOutCount, configuration.arms, expectedMaxReward)
+            rtdp(configuration.horizon, world, simulator, rollOutCount, configuration.arms, expectedMaxReward, configuration.specialSauce)
         }
 
         val sumOfRewards = DoubleArray(configuration.horizon)
@@ -91,8 +101,9 @@ fun executeRtdp(world: Simulator, simulator: Simulator, probabilities: DoubleArr
         }
 
         val averageRewards = sumOfRewards.map { (expectedMaxReward) - it / configuration.iterations }
-
-        results.add(Result("RTDP $rollOutCount", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
+        var sauceFlag = ""
+        if (configuration.specialSauce) sauceFlag = "SS" else sauceFlag = sauceFlag
+        results.add(Result("RTDP $rollOutCount $sauceFlag", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
     }
 
     return results
