@@ -9,44 +9,27 @@ import java.util.stream.IntStream
 /**
  * Created by reazul on 11/18/16.
  */
-class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, val horizon: Int, val eps: Double, val T: Double, configuration: Configuration) {
-    private var graph: MutableMap<BeliefState, BeliefState> = HashMap()
-    private var upperBound: MutableMap<BeliefState, Double> = HashMap()
-    private var lowerBound: MutableMap<BeliefState, Double> = HashMap()
+
+class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, val horizon: Int, val alpha: Double, val T: Double, configuration: Configuration) {
+    lateinit private var upperBound: MutableMap<BeliefState, Double>
+    lateinit private var lowerBound: MutableMap<BeliefState, Double>
+    lateinit private var graph: MutableMap<BeliefState, BeliefState>
+    val numActions:Int
     val random = Random()
-    var numActions = 0
 
     init {
         numActions = configuration.arms - 1
     }
 
-    fun getMaxQ(state: BeliefState): Double {
-        return (0..numActions)
-                .map { calculateQValue(checkGraph(state), it, mdp) }
-                .max()!!
-    }
-
-    fun calculateQValue(st: BeliefState, action: Int, mdp: MDP): Double {
-        val state = checkGraph(st)
-        val successProbabily = state.actionMean(action)
-        val failProbability = 1 - successProbabily
-
-        val successState = checkGraph(state.nextState(action, true))
-        val failState = checkGraph(state.nextState(action, false))
-
-        val successorLevel = state.totalSum() - mdp.startState.totalSum() + 1// 4 is the sum of priors for 2 arms
-        val successMdpState = checkGraph(mdp.getLookupState(successorLevel, successState))
-        val failMdpState = checkGraph(mdp.getLookupState(successorLevel, failState))
-
-        // Calculate the probability weighed future utility
-        val expectedValueOfSuccess = successProbabily * (successMdpState.utility + mdp.getReward(action))
-        val expectedValueOfFailure = failProbability * failMdpState.utility
-
-        return expectedValueOfSuccess + expectedValueOfFailure
+    fun initBoundsIfNeeded(state: BeliefState){
+        if(!graph.containsKey(state)) {
+            graph.put(state, state)
+            lowerBound[state] = 0.0
+            upperBound[state] = horizon * 1.0
+        }
     }
 
     data class TransitionResult(val successorStates: ArrayList<BeliefState>, val successorValues: ArrayList<Double>)
-
     fun getSuccessors(state: BeliefState): TransitionResult {
         val successorValues = ArrayList<Double>(4)
         val successorStates = ArrayList<BeliefState>(4)
@@ -54,8 +37,7 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
         for (action in 0..numActions) {
             for (isSuccess in listOf(true, false)) {
                 val nextState = state.nextState(action, isSuccess)
-                successorStates.add(checkGraph(nextState))
-                updateBounds(nextState)
+                successorStates.add(nextState)
                 val trp = if (isSuccess) state.actionMean(action) else 1 - state.actionMean(action)
                 successorValues.add(trp * (upperBound[nextState]!! - lowerBound[nextState]!!))
             }
@@ -66,107 +48,77 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
     fun sampleSuccessor(successorValues: ArrayList<Double>): Int {
         var sumProportion = 0.0
         val rand = random.nextDouble() * successorValues.sum() // generate random in range 0 to successorValues.sum()
-        for (i in 0..(numActions * 2)) {
+        for (i in 0..successorValues.size-1) {
             if (rand < successorValues[i]) return i
             sumProportion += successorValues[i]
         }
-        return random.nextInt(4)
+        return random.nextInt(successorValues.size)
     }
 
-    fun getUpperBoundsValue(μ: Double, t: Int, depth: Int, α: Double = 2.0): Double {
-        return if (t == 1) Double.POSITIVE_INFINITY else μ + Math.sqrt(α * Math.log(t.toDouble()) / (2 * depth * (t - 1)))
+    fun calculateQValue(state: BeliefState, action: Int, isUpper: Boolean): Double {
+        val successProbability = state.actionMean(action)
+        val failProbability = 1 - successProbability
+
+        val successState = state.nextState(action, true)
+        val failState = state.nextState(action, false)
+
+        initBoundsIfNeeded(successState)
+        initBoundsIfNeeded(failState)
+
+        var Qv = 0.0
+        if(isUpper) Qv = 1 + (successProbability * upperBound[successState]!!) + (failProbability * upperBound[failState]!!)
+        else Qv = 1 + (successProbability * lowerBound[successState]!!) + (failProbability * lowerBound[failState]!!)
+
+        return Qv
     }
 
-    fun getLowerBoundsValue(μ: Double, t: Int, depth: Int, α: Double = 2.0): Double {
-        return if (t == 1) Double.POSITIVE_INFINITY else μ - Math.sqrt(α * Math.log(t.toDouble()) / (2 * depth * (t - 1)))
-    }
-
-    fun checkGraph(state: BeliefState): BeliefState {
-        if (!graph.containsKey(state)) graph.put(state, state)
-        return graph[state]!!
-    }
-
-    fun updateBounds(st: BeliefState) {
-        val state = checkGraph(st)
-        mdp.addStates(mdp.generateStates(1, state))
-        val qValue = getMaxQ(state)
-        var util = state.utility
-        //println("Before State: $state, Utility: $util, qValue: $qValue")
-        state.utility = qValue
-        util = state.utility
-        //println("After State: $state, Utility: $util, qValue: $qValue")
-
-        var mxUpper = -Double.MAX_VALUE
-        (0..state.alphas.size - 1).map {
-            var value = getUpperBoundsValue(qValue, state.actionSum(it), state.totalSum(), 2.0)
-            if (mxUpper < value) mxUpper = value
+    fun getBound(state: BeliefState, isUpper: Boolean): Double{
+        var maxValue = Double.NEGATIVE_INFINITY
+        (0..numActions).forEach {
+            val qValue = calculateQValue(state, it, isUpper)
+            if(maxValue<qValue) maxValue = qValue
         }
-        upperBound[state] = mxUpper
-
-        //upperBound[state] = getUpperBoundsValue(qValue, state.actionSum(it), state.totalSum())
-
-        var mxLower = -Double.MAX_VALUE
-        (0..state.alphas.size - 1).map {
-            var value = getLowerBoundsValue(qValue, state.actionSum(it), state.totalSum(), 2.0)
-            if (mxLower < value) mxLower = value
-        }
-        lowerBound[state] = mxLower//getLowerBoundsValue(qValue, state.leftSum(), state.totalSum())
-
-        //println("update bounds")
-        val x = lowerBound[state]!!
-        val y = upperBound[state]!!
-        //println("State: $state, qValue: $qValue, lower: $x, upper: $y")
+        return maxValue
     }
 
-    fun runSampleTrial(initState: BeliefState, level: Int): Double {
-        var state = initState
+    fun runSampleTrial(startState: BeliefState, level: Int){
+        var state = startState
         val stack = Stack<BeliefState>()
 
-        for (i in level..horizon - 1) {
-
-            state = checkGraph(state)
-
+        for(i in 0..horizon){
             stack.push(state)
-            updateBounds(state)
+            initBoundsIfNeeded(state)
+            upperBound[state] = getBound(state, true)
+            lowerBound[state] = getBound(state, false)
 
-            //println("State: $state, upperBound: ")
+            val (successorStates, successorValues) = getSuccessors(state)
+            val sumSuccessorValues = successorValues.sum()
 
-            val (successorStates, successorValues) = getSuccessors(state) //b(y) in paper algorithm
-            val sumSuccessorValues = successorValues.sum()  //B in paper algorithm
+            if (sumSuccessorValues < ((upperBound[startState]!! - lowerBound[startState]!!) / T)) break
 
-            if (sumSuccessorValues < ((upperBound[initState]!! - lowerBound[initState]!!) / T)) break
-
-            for (j in 0..3) successorValues[j] = successorValues[j] / sumSuccessorValues
-
-            //print("curState: $state, ")
-            state = checkGraph(successorStates[sampleSuccessor(successorValues)])
-            //println("nextState: $state")
+            for (j in 0..successorValues.size-1)
+                successorValues[j] = successorValues[j] / sumSuccessorValues
+            state = successorStates[sampleSuccessor(successorValues)]
         }
 
-        var confidenceBoundDifference = 0.0
-
-        //println("start printing backstack")
-        while (!stack.isEmpty()) {
-            state = stack.pop()
-
-            state = checkGraph(state)
-
-            updateBounds(state)
-            confidenceBoundDifference = upperBound[state]!! - lowerBound[state]!!
-            //println("State: $state, confidenceBoundDifference: $confidenceBoundDifference")
+        while(!stack.isEmpty()){
+            state  = stack.pop()
+            upperBound[state] = getBound(state, true)
+            lowerBound[state] = getBound(state, false)
         }
-
-        //println("return confidenceBoundDifference: $confidenceBoundDifference")
-        return confidenceBoundDifference
     }
 
-    fun simulate(currentState: BeliefState, level: Int) {
-        var prevVal = 0.0
-        var trialVal = runSampleTrial(checkGraph(currentState), level)
+    fun simulate(startState: BeliefState, level: Int) {
+        upperBound = HashMap()
+        lowerBound = HashMap()
+        graph = HashMap()
+        initBoundsIfNeeded(startState)
 
-        while (trialVal > eps /*&& trialVal!=prevVal*/) {
-            prevVal = trialVal
-            trialVal = runSampleTrial(checkGraph(currentState), level)
+        println("Init ConfidenceDifference: ${upperBound[startState]!! - lowerBound[startState]!!}")
+
+        while (upperBound[startState]!! - lowerBound[startState]!! > alpha) {
+            runSampleTrial(startState, level)
+            println("up: ${upperBound[startState]!!}, low: ${lowerBound[startState]!!}")
         }
     }
 }
@@ -181,9 +133,10 @@ fun brtdp(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator, rollOu
     var sum = 0.0
 
     val brtdp = Brtdp(mdp, simulator, simulationCount, horizon, eps, T, configuration)
-    //brtdp.simulate(currentState, 0)
 
-    (0..horizon - 1).forEach { level ->
+    brtdp.simulate(currentState, 0)
+
+    /*(0..horizon - 1).forEach { level ->
         brtdp.simulate(currentState, level)
         bellmanUtilityUpdate(currentState, mdp)
         val (bestAction, bestReward) = selectBestAction(currentState, mdp)
@@ -194,7 +147,7 @@ fun brtdp(mdp: MDP, horizon: Int, world: Simulator, simulator: Simulator, rollOu
         currentState = nextState
         sum += reward
         averageRewards.add(sum / (level + 1.0))
-    }
+    }*/
 
     return averageRewards //Need to make sure about the return value & need to implement the online assumption
 }
@@ -208,7 +161,7 @@ fun executeBrtdp(world: Simulator, simulator: Simulator, probabilities: DoubleAr
 
     brtdp(mdp, configuration.horizon, world, simulator, 20, configuration)
 
-    rollOutCounts.forEach { rollOutCount ->
+    /*rollOutCounts.forEach { rollOutCount ->
         val rewardsList = IntStream.range(0, configuration.horizon).mapToObj {
             brtdp(mdp, configuration.horizon, world, simulator, rollOutCount, configuration)
         }
@@ -226,7 +179,7 @@ fun executeBrtdp(world: Simulator, simulator: Simulator, probabilities: DoubleAr
                 "averageRewards.last(): ${averageRewards.last()}, averageRewards: $averageRewards")
 
         results.add(Result("BRTDP: $rollOutCount", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
-    }
+    }*/
 
     return results
 }
