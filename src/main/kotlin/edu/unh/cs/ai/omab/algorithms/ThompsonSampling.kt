@@ -84,10 +84,11 @@ fun executeThompsonSampling(world: Simulator, simulator: Simulator, probabilitie
         }
     }
 
-    val averageRewards = sumOfRewards.map { (expectedMaxReward) - it / configuration.iterations }
+    val averageRegret = sumOfRewards.mapIndexed { level, reward -> (expectedMaxReward) - reward / configuration.iterations / level}
+    val cumSumRegret = sumOfRewards.mapIndexed { level, reward -> (expectedMaxReward) * level - reward / configuration.iterations }
     var sauceFlag = ""
     if (configuration.specialSauce) sauceFlag = "SS" else sauceFlag = sauceFlag
-    results.add(Result("TS $sauceFlag", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
+    results.add(Result("TS $sauceFlag", probabilities, expectedMaxReward, averageRegret.last(), expectedMaxReward - averageRegret.last(), averageRegret, cumSumRegret))
 
     return results
 }

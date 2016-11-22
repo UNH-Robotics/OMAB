@@ -237,9 +237,10 @@ fun evaluateUct(world: Simulator, simulator: Simulator, probabilities: DoubleArr
         }
     }
 
-    val averageRewards = sumOfRewards.map { expectedMaxReward - it / configuration.iterations }
+    val averageRegret = sumOfRewards.mapIndexed { level, reward -> (expectedMaxReward) - reward / configuration.iterations / level}
+    val cumSumRegret = sumOfRewards.mapIndexed { level, reward -> (expectedMaxReward) * level - reward / configuration.iterations }
 
-    results.add(Result("UCT", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
+    results.add(Result("UCT", probabilities, expectedMaxReward, averageRegret.last(), expectedMaxReward - averageRegret.last(), averageRegret, cumSumRegret))
 
     return results
 }

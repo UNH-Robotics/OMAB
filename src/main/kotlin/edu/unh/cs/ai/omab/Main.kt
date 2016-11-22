@@ -26,7 +26,7 @@ fun main(args: Array<String>) {
     val configuration = Configuration(
             arms = 3,
             rewards = doubleArrayOf(1.0, 1.0, 1.0),
-            horizon = 100,
+            horizon = 10,
             experimentProbabilities = generateProbabilities(50, 3),
             iterations = 10,
             specialSauce = false)
@@ -34,7 +34,7 @@ fun main(args: Array<String>) {
     val configurationSS = Configuration(
             arms = 3,
             rewards = doubleArrayOf(1.0, 1.0, 1.0),
-            horizon = 100,
+            horizon = 10,
             experimentProbabilities = generateProbabilities(50, 3),
             iterations = 10,
             specialSauce = true)
