@@ -14,7 +14,7 @@ class Result(val algorithm: String,
              val cumSumRegret: List<Double>) {
 
     fun toJson(): String {
-        return "{ \"algorithm\": \"$algorithm\", \"optimalReward\": $optimalReward, \"reward\": $reward, \"regret\": $regret, \"probabilities\": ${probabilities.toJson()}, \"averageRegrets\": ${averageRegrets.toJson()}, \"cumSumRegrets\": ${cumSumRegret.toJson()}"
+        return "{ \"algorithm\": \"$algorithm\", \"optimalReward\": $optimalReward, \"reward\": $reward, \"regret\": $regret, \"probabilities\": ${probabilities.toJson()}, \"averageRegrets\": ${averageRegrets.toJson()}, \"cumSumRegrets\": ${cumSumRegret.toJson()}}"
     }
 
     override fun toString(): String {
