@@ -10,10 +10,11 @@ class Result(val algorithm: String,
              val optimalReward: Double,
              val reward: Double,
              val regret: Double,
-             val regrets: List<Double>) {
+             val averageRegrets: List<Double>,
+             val cumSumRegret: List<Double>) {
 
     fun toJson(): String {
-        return "{ \"algorithm\": \"$algorithm\", \"optimalReward\": $optimalReward, \"reward\": $reward, \"regret\": $regret, \"probabilities\": ${probabilities.toJson()}, \"regrets\": ${regrets.toJson()}}"
+        return "{ \"algorithm\": \"$algorithm\", \"optimalReward\": $optimalReward, \"reward\": $reward, \"regret\": $regret, \"probabilities\": ${probabilities.toJson()}, \"averageRegrets\": ${averageRegrets.toJson()}, , \"averageRegrets\": ${cumSumRegret.toJson()}"
     }
 
     override fun toString(): String {
