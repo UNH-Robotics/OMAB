@@ -2,8 +2,8 @@
 
 import json
 import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
+import seaborn as sns
 from pandas import DataFrame
 
 __author__ = 'Bence Cserna'
@@ -23,7 +23,8 @@ def regret_box_plot(experiments):
 
 
 def regret_plot(data):
-    regret_series = data[['algorithm', 'regrets']].groupby('algorithm').apply(list_average_cum_sum, 'regrets')
+    regret_series = data[['algorithm', 'cumSumRegrets']].groupby('algorithm').apply(list_average_cum_sum,
+                                                                                    'cumSumRegrets')
     values = []
     for row in regret_series.values:
         values.append([value for value in row])
