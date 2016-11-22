@@ -75,7 +75,7 @@ fun rtdp(horizon: Int, world: Simulator, simulator: Simulator, rollOutCount: Int
 
 fun executeRtdp(world: Simulator, simulator: Simulator, probabilities: DoubleArray, configuration: Configuration): List<Result> {
     val results: MutableList<Result> = ArrayList(configuration.iterations)
-    val rollOutCounts = intArrayOf(10)
+    val rollOutCounts = intArrayOf(100)
     val expectedMaxReward = probabilities.max()!!
 
     rollOutCounts.forEach { rollOutCount ->

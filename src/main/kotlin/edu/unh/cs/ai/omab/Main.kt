@@ -28,9 +28,18 @@ fun main(args: Array<String>) {
             probabilities = doubleArrayOf(0.8, 0.2, 0.2),
             rewards = doubleArrayOf(1.0, 1.0, 1.0),
             horizon = 50,
-            experimentProbabilities = generateProbabilities(25, 3),
-            iterations = 1)
+            experimentProbabilities = generateProbabilities(50, 3),
+            iterations = 5,
+            specialSauce = false)
 
+    val configurationSS = Configuration(
+            arms = 3,
+            probabilities = doubleArrayOf(0.8, 0.2, 0.2),
+            rewards = doubleArrayOf(1.0, 1.0, 1.0),
+            horizon = 50,
+            experimentProbabilities = generateProbabilities(50, 3),
+            iterations = 5,
+            specialSauce = true)
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
 
 //    evaluateAlgorithm("OnlineValueIteration", ::onlineValueIteration, horizon, results, iterations, configuration)
@@ -38,9 +47,10 @@ fun main(args: Array<String>) {
 //    evaluateAlgorithm("UCT", ::uct, horizon, mdp, results)
 //    evaluateAlgorithm("ValueIteration", ::executeValueIteration, results, configuration)
     evaluateAlgorithm("UCB", ::executeUcb, results, configuration)
-    evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, results, configuration)
+    evaluateAlgorithm("UCB SS", ::executeUcb, results, configurationSS)
+//    evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, results, configuration)
 //    evaluateAlgorithm("Greedy", ::expectationMaximization, results, configuration)
-    evaluateAlgorithm("RTDP", ::executeRtdp, results, configuration)
+//    evaluateAlgorithm("RTDP", ::executeRtdp, results, configuration)
 //    evaluateAlgorithm("BRTDP", ::executeBrtdp, results, configuration)
 
     if (args.isNotEmpty()) {

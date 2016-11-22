@@ -5,6 +5,7 @@ import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
 import edu.unh.cs.ai.omab.experiment.Configuration
 import edu.unh.cs.ai.omab.experiment.Result
+import edu.unh.cs.ai.omab.utils.sampleCorrection
 import java.lang.Math.log
 import java.lang.Math.sqrt
 import java.util.*
@@ -14,7 +15,7 @@ import kotlin.Double.Companion.POSITIVE_INFINITY
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
-private fun upperConfidenceBounds(horizon: Int, world: Simulator, arms: Int, rewards: DoubleArray): List<Double> {
+private fun upperConfidenceBounds(horizon: Int, world: Simulator, arms: Int, rewards: DoubleArray, specialSauce: Boolean): List<Double> {
     val mdp: MDP = MDP(numberOfActions = arms)
     mdp.setRewards(rewards)
     var currentState: BeliefState = mdp.startState
@@ -45,6 +46,13 @@ private fun upperConfidenceBounds(horizon: Int, world: Simulator, arms: Int, rew
 //        } else {
 //            world.transition(currentState, Action.RIGHT)
 //        }
+        if(specialSauce) {
+            val newTransitions = sampleCorrection(currentState)
+            if(!newTransitions[0].isNaN()) {
+                world.updateTransitionProbabilities(sampleCorrection(currentState))
+            }
+        }
+
         val (nextState, reward) = world.transition(currentState, bestAction)
         currentState = nextState
         sum = reward
@@ -63,7 +71,7 @@ fun executeUcb(world: Simulator, simulator: Simulator, probabilities: DoubleArra
     val expectedMaxReward = probabilities.max()!!
 
     val rewardsList = IntStream.range(0, configuration.iterations).mapToObj {
-        upperConfidenceBounds(configuration.horizon, world, configuration.arms, configuration.rewards)
+        upperConfidenceBounds(configuration.horizon, world, configuration.arms, configuration.rewards, configuration.specialSauce)
     }
 
     val sumOfRewards = DoubleArray(configuration.horizon)
@@ -77,7 +85,9 @@ fun executeUcb(world: Simulator, simulator: Simulator, probabilities: DoubleArra
 
     val averageRewards = sumOfRewards.map { (expectedMaxReward) - it / configuration.iterations }
 
-    results.add(Result("UCB", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
+    var sauceFlag = ""
+    if (configuration.specialSauce) sauceFlag = "SS" else sauceFlag = sauceFlag
+    results.add(Result("UCB $sauceFlag", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
 
     return results
 }
