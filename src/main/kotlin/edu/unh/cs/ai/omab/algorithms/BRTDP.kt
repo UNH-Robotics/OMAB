@@ -11,9 +11,9 @@ import java.util.stream.IntStream
  */
 
 class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, val horizon: Int, val alpha: Double, val T: Double, configuration: Configuration) {
-    lateinit private var upperBound: MutableMap<BeliefState, Double>// = HashMap()
-    lateinit private var lowerBound: MutableMap<BeliefState, Double>// = HashMap()
-    lateinit private var graph: MutableMap<BeliefState, BeliefState>// = HashMap()
+    lateinit private var upperBound: MutableMap<BeliefState, Double>
+    lateinit private var lowerBound: MutableMap<BeliefState, Double>
+    lateinit private var graph: MutableMap<BeliefState, BeliefState>
     val numActions:Int
     val random = Random()
 
@@ -56,8 +56,8 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
     }
 
     fun calculateQValue(state: BeliefState, action: Int, isUpper: Boolean): Double {
-        val successProbabily = state.actionMean(action)
-        val failProbability = 1 - successProbabily
+        val successProbability = state.actionMean(action)
+        val failProbability = 1 - successProbability
 
         val successState = state.nextState(action, true)
         val failState = state.nextState(action, false)
@@ -66,8 +66,8 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
         initBoundsIfNeeded(failState)
 
         var Qv = 0.0
-        if(isUpper) Qv = 1 + (successProbabily * upperBound[successState]!!) + (failProbability * upperBound[failState]!!)
-        else Qv = 1 + (successProbabily * lowerBound[successState]!!) + (failProbability * lowerBound[failState]!!)
+        if(isUpper) Qv = 1 + (successProbability * upperBound[successState]!!) + (failProbability * upperBound[failState]!!)
+        else Qv = 1 + (successProbability * lowerBound[successState]!!) + (failProbability * lowerBound[failState]!!)
 
         return Qv
     }
@@ -100,6 +100,12 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
                 successorValues[j] = successorValues[j] / sumSuccessorValues
             state = successorStates[sampleSuccessor(successorValues)]
         }
+
+        while(!stack.isEmpty()){
+            state  = stack.pop()
+            upperBound[state] = getBound(state, true)
+            lowerBound[state] = getBound(state, false)
+        }
     }
 
     fun simulate(startState: BeliefState, level: Int) {
@@ -108,7 +114,7 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
         graph = HashMap()
         initBoundsIfNeeded(startState)
 
-        println("ConfidenceDifference: ${upperBound[startState]!! - lowerBound[startState]!!}")
+        println("Init ConfidenceDifference: ${upperBound[startState]!! - lowerBound[startState]!!}")
 
         while (upperBound[startState]!! - lowerBound[startState]!! > alpha) {
             runSampleTrial(startState, level)
