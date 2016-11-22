@@ -65,11 +65,11 @@ class Brtdp(val mdp: MDP, val simulator: Simulator, val simulationCount: Int, va
         initBoundsIfNeeded(successState)
         initBoundsIfNeeded(failState)
 
-        var Qv = 0.0
-        if(isUpper) Qv = 1 + (successProbability * upperBound[successState]!!) + (failProbability * upperBound[failState]!!)
-        else Qv = 1 + (successProbability * lowerBound[successState]!!) + (failProbability * lowerBound[failState]!!)
+        var Qvalue = 0.0
+        if(isUpper) Qvalue = state.actionMean(action) + (successProbability * upperBound[successState]!!) + (failProbability * upperBound[failState]!!)
+        else Qvalue = state.actionMean(action) + (successProbability * lowerBound[successState]!!) + (failProbability * lowerBound[failState]!!)
 
-        return Qv
+        return Qvalue
     }
 
     fun getBound(state: BeliefState, isUpper: Boolean): Double{
