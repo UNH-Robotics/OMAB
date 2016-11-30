@@ -1,4 +1,3 @@
-//usr/bin/g++ -std=c++14 -fopenmp -mtune=native -march=native -O3 gittins.cpp && exec ./a.out
 #include<iostream>
 #include<vector>
 #include<utility>
@@ -10,7 +9,8 @@
 
 using namespace std;
 
-/// state type: (positive, negative)
+
+/// state type: (positive, negetive)
 typedef pair<const int, const int> state_t;
 
 template<class T> std::ostream & operator<<(std::ostream &os, const std::vector<T>& vec){
@@ -45,7 +45,7 @@ int main(){
     // number of steps (horizon = 1 is 1 state)
     const uint horizon = 100;
     // discretization of gittins value
-    const double lambda_step = 0.0001;
+    const double lambda_step = 0.00001;
     // discount factor
     const double gamma = 1;
     // output file name
@@ -96,13 +96,15 @@ int main(){
 
     // value function
     Eigen::MatrixXd valuefunction(lambda_count, state_count);
-    // difference between the certain an undecrtain options
+    // difference between the certain an uncertain options
     Eigen::MatrixXd differences(lambda_count, state_count);
 
     // iterate over each lambda separately (this step can be parallelized)
+    // lambda is the value of the certain arm
     #pragma omp parallel for
     for(size_t ilambda=0; ilambda < lambda_count; ilambda++){
         // iterate over states backwards (dynamic programming)
+        // state of the uncertain arm
         for(int istate=state_count-1; istate >= 0; istate--){
             auto state = states[istate];
             auto nextstates = transition(state);
@@ -111,6 +113,7 @@ int main(){
                 negative_sp = nextstates.second;
 
             // value of taking the uncertain function
+            // states beyond the horizon have value 0
             auto value_uncertain =
                 positive_sp.second * (1.0 + (steps_to_end(horizon, positive_sp.first) <= 0 ?
                                 0 : gamma*valuefunction(ilambda, state2index[positive_sp.first]))) +
@@ -118,6 +121,7 @@ int main(){
                                 0 : gamma*valuefunction(ilambda, state2index[negative_sp.first])));
 
             // compute value of the certain option
+            // discount = 1 must be treated differently
             auto value_certain = (gamma < 1.0) ?
                     lambdas[ilambda] * (1 - pow(gamma,steps_to_end(horizon, state))) / (1-gamma) :
                     lambdas[ilambda] * steps_to_end(horizon, state);
