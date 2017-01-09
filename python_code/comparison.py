@@ -74,7 +74,38 @@ def evaluate(method, horizon, runs):
     return regrets
     
 ## Simple Methods
+
+class OptimisticLookAhead:
+    """
+    Optimistic Look Ahead based on OGI paper by Gutin & Farias
+    This is a trial implementation right now which is not necessarily correct
+    """
+    def __init__(self):
+        # initialize prior values
+        self.Acountpos = 1; self.Acountneg = 1;
+        self.Bcountpos = 1; self.Bcountneg = 1;
     
+    def choose(self, t):
+        """ Which arm to choose; t is the current time step. Returns arm index """
+        pA = np.random.beta(self.Acountpos, self.Acountneg)
+        pB = np.random.beta(self.Bcountpos, self.Bcountneg)
+        rA = bernoulli(pA)
+        rB = bernoulli(pB)
+        if rA > rB: return 0
+        else: return 1
+        
+    def update(self,arm, outcome):
+        """ Updates the estimate for the arm outcome """
+        if arm == 0:
+            if outcome == 1: self.Acountpos += 1
+            else: self.Acountneg += 1
+        elif arm == 1:
+            if outcome == 1: self.Bcountpos += 1
+            else: self.Bcountneg += 1
+        else:
+            raise RuntimeError("Invalid arm number")
+            
+
 class UCB:
     """
     Upper confidence bound. Note the randomization on ties. This is
@@ -123,7 +154,6 @@ class Thompson:
         if pA > pB: return 0
         else: return 1
         
-        
     def update(self,arm, outcome):
         """ Updates the estimate for the arm outcome """
         if arm == 0:
@@ -134,9 +164,9 @@ class Thompson:
             else: self.Bcountneg += 1
         else:
             raise RuntimeError("Invalid arm number")
-
+            
+            
 ## Gittins index
-
 
 # loads the index as a global variable (to avoid reinit in every run)
 gittins = {}
@@ -182,12 +212,14 @@ trials = 5000
 
 ucb_regrets = evaluate(UCB, horizon, trials)
 thompson_regrets = evaluate(Thompson, horizon, trials)
+ola_regrets = evaluate(OptimisticLookAhead, horizon, trials)
 gittins_regrets = evaluate(Gittins, horizon, trials)
     
 ## Plot the mean regret
 
 plt.plot(ucb_regrets.mean(0), label='UCB')
 plt.plot(thompson_regrets.mean(0), label='Thompson')
+plt.plot(ola_regrets.mean(0), label='OptimisticLookahed')
 plt.plot(gittins_regrets.mean(0), label='Gittins')
 plt.legend(loc='upper left')
 plt.xlabel('Time step')
@@ -207,6 +239,7 @@ deltas = np.array(tuple(abs(pA-pB) for pA, pB in runs))
 
 ucb_regrets = evaluate(UCB, horizon, runs)
 thompson_regrets = evaluate(Thompson, horizon, runs)
+ola_regrets = evaluate(OptimisticLookAhead, horizon, runs)
 gittins_regrets = evaluate(Gittins, horizon, runs)
 
 ## Plot dependence on delta
@@ -216,7 +249,7 @@ shrunkdelta = deltas.reshape(-1, repetitions)[:,0]
 shrunkprobs = np.array([max(p1,p2) for p1,p2 in runs]).reshape(-1, repetitions)[:,0]
 
 def plot_curve(data, pos, name):
-    plt.subplot(1,3,pos)
+    plt.subplot(1,4,pos)
     plt.scatter(shrunkdelta,data[:,-1].reshape(-1,repetitions).mean(1)/(shrunkprobs*horizon)*100, s=10, c=shrunkprobs, edgecolors='face',cmap=matplotlib.cm.plasma)
     plt.ylim(-1,30)
     plt.xlabel('$\Delta$'); plt.ylabel('Mean propotional regret (\%)'); plt.title(name)
@@ -225,7 +258,8 @@ def plot_curve(data, pos, name):
 plt.figure(num=None, figsize=(10, 6), dpi=80, facecolor='w', edgecolor='k')
 plot_curve(ucb_regrets, 1, "UCB")
 plot_curve(thompson_regrets,2, "Thompson")
-plot_curve(gittins_regrets, 3, "Gittins")
+plot_curve(ola_regrets,3, "OptimisticLookahed")
+plot_curve(gittins_regrets, 4, "Gittins")
 
 plt.savefig('proportional_regret.pdf')
 plt.show()
