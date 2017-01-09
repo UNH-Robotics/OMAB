@@ -89,9 +89,23 @@ class OptimisticLookAhead:
         """ Which arm to choose; t is the current time step. Returns arm index """
         pA = np.random.beta(self.Acountpos, self.Acountneg)
         pB = np.random.beta(self.Bcountpos, self.Bcountneg)
-        rA = bernoulli(pA)
-        rB = bernoulli(pB)
-        if rA > rB: return 0
+        
+        tRemain = horizon - ( (self.Acountpos + self.Acountneg + self.Bcountpos + self.Bcountneg) - 4 )
+        
+        v01 = np.mean(np.max( np.row_stack( (np.random.beta(self.Acountpos+1, self.Acountneg,size=10),np.random.beta(self.Bcountpos, self.Bcountneg ,size=10) ) ) ) ) * tRemain
+        v02 = np.mean(np.max( np.row_stack( (np.random.beta(self.Acountpos, self.Acountneg+1,size=10),np.random.beta(self.Bcountpos, self.Bcountneg ,size=10) ) ) ) ) * tRemain
+
+        v11 = np.mean(np.max( np.row_stack( (np.random.beta(self.Acountpos, self.Acountneg,size=10),np.random.beta(self.Bcountpos+1, self.Bcountneg ,size=10) ) ) ) ) * tRemain
+        v12 = np.mean(np.max( np.row_stack( (np.random.beta(self.Acountpos, self.Acountneg,size=10),np.random.beta(self.Bcountpos, self.Bcountneg+1 ,size=10) ) ) ) ) * tRemain
+        
+        value0 = ( self.Acountpos/(self.Acountpos+self.Acountneg) ) * v01 + ( 1 - ( self.Acountpos/(self.Acountpos+self.Acountneg) ) ) * v02
+        value1 = ( self.Bcountpos/(self.Bcountpos+self.Bcountneg) ) * v11 + ( 1 - ( self.Bcountpos/(self.Bcountpos+self.Bcountneg) ) ) * v12
+
+        
+        #print(len(v1))
+        #rA = bernoulli(pA)
+        #rB = bernoulli(pB)
+        if value0 > value1: return 0
         else: return 1
         
     def update(self,arm, outcome):
