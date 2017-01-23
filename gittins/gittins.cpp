@@ -1,3 +1,4 @@
+//usr/bin/g++ gittins.cpp -fopenmp -march=native -O3 && ./a.out;
 #include<iostream>
 #include<vector>
 #include<utility>
@@ -8,7 +9,6 @@
 #include<eigen3/Eigen/Dense>
 
 using namespace std;
-
 
 /// state type: (positive, negetive)
 typedef pair<const int, const int> state_t;
@@ -43,11 +43,11 @@ inline int steps_to_end(uint horizon, state_t state){
 int main(){
     // -- initialize ---------------------------------------------------
     // number of steps (horizon = 1 is 1 state)
-    const uint horizon = 100;
+    const uint horizon = 1000;
     // discretization of gittins value
-    const double lambda_step = 0.00001;
+    const double lambda_step = 0.01;
     // discount factor
-    const double gamma = 1;
+    const double gamma = 0.99;
     // output file name
     const string output_filename = "gittins.csv";
 
@@ -155,7 +155,7 @@ int main(){
     cout << "Duration (computations): " << chrono::duration <double, milli> (diff).count() << " ms" << endl;
     cout << "Writing results to a csv: " << output_filename << endl;
     ofstream fout(output_filename);
-    fout << "Positive, Negative, Index" << endl;
+    fout << "Positive,Negative,Index" << endl;
     for (size_t i = 0; i < state_count; i++) {
         fout << states[i].first << "," << states[i].second << "," << results[i] << endl;
     }
