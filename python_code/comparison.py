@@ -85,13 +85,15 @@ class OptimisticLookAhead:
         # initialize prior values
         self.Acountpos = 1; self.Acountneg = 1;
         self.Bcountpos = 1; self.Bcountneg = 1;
-        self.betasamplecount = 20
+        self.betasamplecount = 500
     
     def choose(self, t):
         """ Which arm to choose; t is the current time step. Returns arm index """
         
         tRemain = horizon - ( (self.Acountpos + self.Acountneg + self.Bcountpos + self.Bcountneg) - 4 )
         
+        # TODO: WE NEED TO EXPLAIN THIS!!!
+        tRemain = 0.3*tRemain
 
         v01 = np.mean(np.max( np.row_stack( (np.random.beta(self.Acountpos+1, self.Acountneg,size=self.betasamplecount),
                         np.random.beta(self.Bcountpos, self.Bcountneg ,size=self.betasamplecount) ) ),axis=0)) * tRemain
@@ -250,7 +252,7 @@ class Gittins:
 ## Compute the mean regret
 
 horizon = 100
-trials = 10
+trials = 50
 
 ucb_regrets = evaluate(UCB, horizon, trials)
 thompson_regrets = evaluate(Thompson, horizon, trials)
