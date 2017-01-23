@@ -85,12 +85,12 @@ class OptimisticLookAhead:
         # initialize prior values
         self.Acountpos = 1; self.Acountneg = 1;
         self.Bcountpos = 1; self.Bcountneg = 1;
-        self.betasamplecount = 2000
+        self.betasamplecount = 20
     
     def choose(self, t):
         """ Which arm to choose; t is the current time step. Returns arm index """
         
-        tRemain = 1 #horizon - ( (self.Acountpos + self.Acountneg + self.Bcountpos + self.Bcountneg) - 4 )
+        tRemain = horizon - ( (self.Acountpos + self.Acountneg + self.Bcountpos + self.Bcountneg) - 4 )
         
 
         v01 = np.mean(np.max( np.row_stack( (np.random.beta(self.Acountpos+1, self.Acountneg,size=self.betasamplecount),
@@ -106,16 +106,15 @@ class OptimisticLookAhead:
                         np.random.beta(self.Bcountpos, self.Bcountneg+1 ,size=self.betasamplecount) ) ), axis=0 )) * tRemain
         
         pA = self.Acountpos/(self.Acountpos+self.Acountneg)
-        valueA = pA*v01 + (1 - pA)*v02
+        valueA = pA*(1+v01) + (1 - pA)*v02
         
         pB = self.Bcountpos/(self.Bcountpos+self.Bcountneg)
-        valueB = pB*v11 + (1-pB)*v12
+        valueB = pB*(1+v11) + (1-pB)*v12
 
-
-        print(v01,v02,v11,v12)
-        print(pA, pB)
-        print(self.Acountpos, self.Acountneg, valueA, self.Bcountpos, self.Bcountneg, valueB)
-        print('-----')
+        #print(v01,v02,v11,v12)
+        #print(pA, pB)
+        #print(self.Acountpos, self.Acountneg, valueA, self.Bcountpos, self.Bcountneg, valueB)
+        #print('-----')
         
         if valueA > valueB: return 0
         else: return 1
@@ -133,8 +132,8 @@ class OptimisticLookAhead:
     
 
 
-horizon = 10
-trials = 1
+horizon = 100
+trials = 10
 
 ola_regrets = evaluate(OptimisticLookAhead, horizon, trials)
 
@@ -251,7 +250,7 @@ class Gittins:
 ## Compute the mean regret
 
 horizon = 100
-trials = 5000
+trials = 10
 
 ucb_regrets = evaluate(UCB, horizon, trials)
 thompson_regrets = evaluate(Thompson, horizon, trials)
