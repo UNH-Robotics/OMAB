@@ -5,7 +5,6 @@ import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
 import edu.unh.cs.ai.omab.experiment.Configuration
 import edu.unh.cs.ai.omab.experiment.Result
-import edu.unh.cs.ai.omab.utils.sampleCorrection
 import java.lang.Math.log
 import java.lang.Math.sqrt
 import java.util.*
@@ -15,50 +14,27 @@ import kotlin.Double.Companion.POSITIVE_INFINITY
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
-private fun upperConfidenceBounds(horizon: Int, world: Simulator, arms: Int, rewards: DoubleArray, specialSauce: Boolean): List<Double> {
+private fun upperConfidenceBounds(horizon: Int, world: Simulator, arms: Int, armRewards: DoubleArray): List<Double> {
     val mdp: MDP = MDP(numberOfActions = arms)
-    mdp.setRewards(rewards)
+    mdp.setRewards(armRewards)
+
     var currentState: BeliefState = mdp.startState
+    var augmentedState: BeliefState = currentState
     val rewards: MutableList<Double> = ArrayList(horizon)
-    var sum = 0.0
 
-    (0..horizon - 1).forEach { level ->
-
-        val upperConfidenceBoundsValues = (0..currentState.alphas.size - 1).map {
-            upperConfidenceBoundsValue(currentState.actionMean(it), currentState.actionSum(it), currentState.totalSum(), 2.0)
+    (0..horizon - 1).forEach {
+        val upperConfidenceBoundsValues = (0..augmentedState.alphas.size - 1).map {
+            upperConfidenceBoundsValue(augmentedState.actionMean(it), augmentedState.actionSum(it), augmentedState.totalSum(), 2.0)
         }.toDoubleArray()
 
-        var bestAction = 0
-        (0..upperConfidenceBoundsValues.size - 1).forEach {
-            if (upperConfidenceBoundsValues[bestAction] <
-                    upperConfidenceBoundsValues[it]) {
-                bestAction = it
-            } else {
-                bestAction = bestAction
-            }
-        }
-
-//        val leftQ = upperConfidenceBoundsValue(currentState.leftMean(), currentState.leftSum(), currentState.totalSum(), 2.0)
-//        val rightQ = upperConfidenceBoundsValue(currentState.rightMean(), currentState.rightSum(), currentState.totalSum(), 2.0)
-
-//        val (nextState, reward) = if (leftQ > rightQ) {
-//            world.transition(currentState, Action.LEFT)
-//        } else {
-//            world.transition(currentState, Action.RIGHT)
-//        }
-        if(specialSauce) {
-            val newTransitions = sampleCorrection(currentState)
-            if(!newTransitions[0].isNaN()) {
-                world.updateTransitionProbabilities(sampleCorrection(currentState))
-            }
-        }
+        val bestAction = (0..upperConfidenceBoundsValues.size - 1).maxBy { upperConfidenceBoundsValues[it] }!!
 
         val (nextState, reward) = world.transition(currentState, bestAction)
         currentState = nextState
-        sum += reward
-        rewards.add(sum)
+        augmentedState = currentState
+        rewards.add(reward)
     }
-//    println(rewards)
+
     return rewards
 }
 
@@ -71,22 +47,24 @@ fun executeUcb(world: Simulator, simulator: Simulator, probabilities: DoubleArra
     val expectedMaxReward = probabilities.max()!!
 
     val rewardsList = IntStream.range(0, configuration.iterations).mapToObj {
-        upperConfidenceBounds(configuration.horizon, world, configuration.arms, configuration.rewards, configuration.specialSauce)
+        upperConfidenceBounds(configuration.horizon, world, configuration.arms, configuration.rewards)
     }
 
-    val sumOfRewards = DoubleArray(configuration.horizon)
+    val averageRewards = DoubleArray(configuration.horizon)
     rewardsList.forEach { rewards ->
         (0..configuration.horizon - 1).forEach {
-            sumOfRewards[it] = rewards[it] + sumOfRewards[it]
+            averageRewards[it] = rewards[it] / configuration.iterations + averageRewards[it]
         }
     }
 
-    val averageRegret = sumOfRewards.mapIndexed { level, reward -> (expectedMaxReward) - reward / configuration.iterations / level}
-    val cumSumRegret = sumOfRewards.mapIndexed { level, reward -> (expectedMaxReward) * level - reward / configuration.iterations }
+    val averageRegrets = averageRewards.mapIndexed { level, reward -> expectedMaxReward - reward }
+    var sum = 0.0
+    val cumSumRegrets = averageRegrets.map {
+        sum += it
+        sum
+    }
 
-    var sauceFlag = ""
-    if (configuration.specialSauce) sauceFlag = "SS" else sauceFlag = sauceFlag
-    results.add(Result("UCB $sauceFlag", probabilities, expectedMaxReward, averageRegret.last(), expectedMaxReward - averageRegret.last(), averageRegret, cumSumRegret))
+    results.add(Result("UCB", probabilities, expectedMaxReward, averageRegrets.last(), expectedMaxReward - averageRegrets.last(), averageRegrets, cumSumRegrets))
 
     return results
 }

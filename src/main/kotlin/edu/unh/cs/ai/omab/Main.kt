@@ -1,7 +1,5 @@
 package edu.unh.cs.ai.omab
 
-//import edu.unh.cs.ai.omab.algorithms.executeRtdp
-import edu.unh.cs.ai.omab.algorithms.executeRtdp
 import edu.unh.cs.ai.omab.algorithms.executeThompsonSampling
 import edu.unh.cs.ai.omab.algorithms.executeUcb
 import edu.unh.cs.ai.omab.domain.BanditSimulator
@@ -11,7 +9,6 @@ import edu.unh.cs.ai.omab.experiment.Configuration
 import edu.unh.cs.ai.omab.experiment.Result
 import edu.unh.cs.ai.omab.experiment.toJson
 import java.io.File
-import java.lang.Math.exp
 import java.lang.Math.max
 import java.util.*
 import java.util.stream.IntStream
@@ -22,22 +19,16 @@ import kotlin.system.measureTimeMillis
  */
 fun main(args: Array<String>) {
     println("OMAB!")
-
+//    val beliefState = BeliefState(intArrayOf(), intArrayOf())
+//    val augmentAsLP = beliefState.augmentAsLP()
+//
     val configuration = Configuration(
             arms = 3,
             rewards = doubleArrayOf(1.0, 1.0, 1.0),
-            horizon = 10,
-            experimentProbabilities = generateProbabilities(50, 3),
-            iterations = 10,
-            specialSauce = false)
+            horizon = 6,
+            experimentProbabilities = generateProbabilities(resolution = 20, count = 3),
+            iterations = 10)
 
-    val configurationSS = Configuration(
-            arms = 3,
-            rewards = doubleArrayOf(1.0, 1.0, 1.0),
-            horizon = 10,
-            experimentProbabilities = generateProbabilities(50, 3),
-            iterations = 10,
-            specialSauce = true)
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
 
 //    evaluateAlgorithm("OnlineValueIteration", ::onlineValueIteration, horizon, results, iterations, configuration)
@@ -45,9 +36,9 @@ fun main(args: Array<String>) {
 //    evaluateAlgorithm("UCT", ::uct, horizon, mdp, results)
 //    evaluateAlgorithm("ValueIteration", ::executeValueIteration, results, configuration)
     evaluateAlgorithm("UCB", ::executeUcb, results, configuration)
-    evaluateAlgorithm("UCB SS", ::executeUcb, results, configurationSS)
+//    evaluateAlgorithm("UCB SS", ::executeUcb, results, configurationSS)
     evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, results, configuration)
-    evaluateAlgorithm("Thompson Sampling SS", ::executeThompsonSampling, results, configurationSS)
+//    evaluateAlgorithm("Thompson Sampling SS", ::executeThompsonSampling, results, configurationSS)
 //    evaluateAlgorithm("Greedy", ::expectationMaximization, results, configuration)
 //    evaluateAlgorithm("RTDP", ::executeRtdp, results, configuration)
 //    evaluateAlgorithm("BRTDP", ::executeBrtdp, results, configuration)
@@ -82,13 +73,22 @@ private fun executeAlgorithm(results: MutableList<Result>,
             .parallel()
             .forEach {
                 results.addAll(algorithm(
-                        BanditWorld(configuration.experimentProbabilities[it]),
+                        BanditWorld(configuration.experimentProbabilities[it], configuration.rewards),
                         BanditSimulator(configuration.rewards),
                         experimentProbabilities[it],
                         configuration))
             }
 }
 
+/**
+ * Generate arm probabilities such that the probabilities with lower index are higher.
+ * For example: [0.5, 0.3, 0.2]
+ *
+ * @param resolution is the granularity of the probabilities. It defines the bucket size of the discretization.
+ * @param count is the number of arms/probabilities to generate.
+ *
+ * @return List of probabilities.
+ */
 private fun generateProbabilities(resolution: Int, count: Int): List<DoubleArray> {
     val step = 1.0 / resolution
 

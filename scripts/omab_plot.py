@@ -23,8 +23,10 @@ def regret_box_plot(experiments):
 
 
 def regret_plot(data):
-    regret_series = data[['algorithm', 'cumSumRegrets']].groupby('algorithm').apply(list_average_cum_sum,
+    regret_series = data[['algorithm', 'cumSumRegrets']].groupby('algorithm').apply(list_average,
                                                                                     'cumSumRegrets')
+
+    print(regret_series)
     values = []
     for row in regret_series.values:
         values.append([value for value in row])
@@ -33,6 +35,7 @@ def regret_plot(data):
     for row in values:
         max_len = max(len(row), max_len)
 
+    # Fill missing values with NaN
     for row in values:
         if len(row) < max_len:
             row += [float('NaN')] * (max_len - len(row))
@@ -67,7 +70,8 @@ def configure_sns():
 
 def main():
     configure_sns()
-    data = DataFrame(read_data("../results/result_vi_ts_ucb_100.dat"))
+    data = DataFrame(read_data("../results/resultT.dat"))
+    print(data)
     # data2 = DataFrame(read_data("../results/result_rtdp_h80.dat"))
     # regret_box_plot(data)
     # data.set_index('algorithm', inplace=True)
