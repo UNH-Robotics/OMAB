@@ -93,7 +93,8 @@ class OptimisticLookAhead:
         tRemain = horizon - ( (self.Acountpos + self.Acountneg + self.Bcountpos + self.Bcountneg) - 4 )
         
         # TODO: WE NEED TO EXPLAIN THIS!!!
-        tRemain = 0.3*tRemain
+        discount = 0.95
+        tRemain = (1-discount**tRemain)/(1-discount)
 
         v01 = np.mean(np.max( np.row_stack( (np.random.beta(self.Acountpos+1, self.Acountneg,size=self.betasamplecount),
                         np.random.beta(self.Bcountpos, self.Bcountneg ,size=self.betasamplecount) ) ),axis=0)) * tRemain
@@ -252,7 +253,7 @@ class Gittins:
 ## Compute the mean regret
 
 horizon = 100
-trials = 50
+trials = 200
 
 ucb_regrets = evaluate(UCB, horizon, trials)
 thompson_regrets = evaluate(Thompson, horizon, trials)
@@ -263,7 +264,7 @@ gittins_regrets = evaluate(Gittins, horizon, trials)
 
 plt.plot(ucb_regrets.mean(0), label='UCB')
 plt.plot(thompson_regrets.mean(0), label='Thompson')
-plt.plot(ola_regrets.mean(0), label='OptimisticLookahed')
+plt.plot(ola_regrets.mean(0), label='OptimisticLookahead')
 plt.plot(gittins_regrets.mean(0), label='Gittins')
 plt.legend(loc='upper left')
 plt.xlabel('Time step')
