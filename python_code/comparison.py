@@ -73,7 +73,8 @@ def evaluate(method, horizon, runs):
         regrets[irun,:] = np.cumsum(losses)     
     return regrets
     
-## Simple Methods
+## New Methods
+
 
 class OptimisticLookAhead:
     """
@@ -84,28 +85,40 @@ class OptimisticLookAhead:
         # initialize prior values
         self.Acountpos = 1; self.Acountneg = 1;
         self.Bcountpos = 1; self.Bcountneg = 1;
+        self.betasamplecount = 500
     
     def choose(self, t):
         """ Which arm to choose; t is the current time step. Returns arm index """
-        pA = np.random.beta(self.Acountpos, self.Acountneg)
-        pB = np.random.beta(self.Bcountpos, self.Bcountneg)
         
         tRemain = horizon - ( (self.Acountpos + self.Acountneg + self.Bcountpos + self.Bcountneg) - 4 )
         
-        v01 = np.mean(np.max( np.row_stack( (np.random.beta(self.Acountpos+1, self.Acountneg,size=10),np.random.beta(self.Bcountpos, self.Bcountneg ,size=10) ) ) ) ) * tRemain
-        v02 = np.mean(np.max( np.row_stack( (np.random.beta(self.Acountpos, self.Acountneg+1,size=10),np.random.beta(self.Bcountpos, self.Bcountneg ,size=10) ) ) ) ) * tRemain
+        # TODO: WE NEED TO EXPLAIN THIS!!!
+        tRemain = 0.3*tRemain
 
-        v11 = np.mean(np.max( np.row_stack( (np.random.beta(self.Acountpos, self.Acountneg,size=10),np.random.beta(self.Bcountpos+1, self.Bcountneg ,size=10) ) ) ) ) * tRemain
-        v12 = np.mean(np.max( np.row_stack( (np.random.beta(self.Acountpos, self.Acountneg,size=10),np.random.beta(self.Bcountpos, self.Bcountneg+1 ,size=10) ) ) ) ) * tRemain
-        
-        value0 = ( self.Acountpos/(self.Acountpos+self.Acountneg) ) * v01 + ( 1 - ( self.Acountpos/(self.Acountpos+self.Acountneg) ) ) * v02
-        value1 = ( self.Bcountpos/(self.Bcountpos+self.Bcountneg) ) * v11 + ( 1 - ( self.Bcountpos/(self.Bcountpos+self.Bcountneg) ) ) * v12
+        v01 = np.mean(np.max( np.row_stack( (np.random.beta(self.Acountpos+1, self.Acountneg,size=self.betasamplecount),
+                        np.random.beta(self.Bcountpos, self.Bcountneg ,size=self.betasamplecount) ) ),axis=0)) * tRemain
+                        
+        v02 = np.mean(np.max( np.row_stack( (np.random.beta(self.Acountpos, self.Acountneg+1,size=self.betasamplecount),
+                np.random.beta(self.Bcountpos, self.Bcountneg ,size=self.betasamplecount) )), axis=0)) * tRemain
 
+        v11 = np.mean(np.max( np.row_stack( (np.random.beta(self.Acountpos, self.Acountneg,size=self.betasamplecount),
+                        np.random.beta(self.Bcountpos+1, self.Bcountneg ,size=self.betasamplecount) ) ), axis=0)) * tRemain
+                        
+        v12 = np.mean(np.max( np.row_stack( (np.random.beta(self.Acountpos, self.Acountneg,size=self.betasamplecount),
+                        np.random.beta(self.Bcountpos, self.Bcountneg+1 ,size=self.betasamplecount) ) ), axis=0 )) * tRemain
         
-        #print(len(v1))
-        #rA = bernoulli(pA)
-        #rB = bernoulli(pB)
-        if value0 > value1: return 0
+        pA = self.Acountpos/(self.Acountpos+self.Acountneg)
+        valueA = pA*(1+v01) + (1 - pA)*v02
+        
+        pB = self.Bcountpos/(self.Bcountpos+self.Bcountneg)
+        valueB = pB*(1+v11) + (1-pB)*v12
+
+        #print(v01,v02,v11,v12)
+        #print(pA, pB)
+        #print(self.Acountpos, self.Acountneg, valueA, self.Bcountpos, self.Bcountneg, valueB)
+        #print('-----')
+        
+        if valueA > valueB: return 0
         else: return 1
         
     def update(self,arm, outcome):
@@ -118,7 +131,24 @@ class OptimisticLookAhead:
             else: self.Bcountneg += 1
         else:
             raise RuntimeError("Invalid arm number")
+    
+
+
+horizon = 100
+trials = 10
+
+ola_regrets = evaluate(OptimisticLookAhead, horizon, trials)
+
+plt.plot(ola_regrets.mean(0), label='OptimisticLookahed')
+plt.legend(loc='upper left')
+plt.xlabel('Time step')
+plt.ylabel('Regret')
+plt.grid()
+plt.savefig('regrets.pdf')
+plt.show()            
             
+            
+## Simple methods            
 
 class UCB:
     """
@@ -222,7 +252,7 @@ class Gittins:
 ## Compute the mean regret
 
 horizon = 100
-trials = 5000
+trials = 50
 
 ucb_regrets = evaluate(UCB, horizon, trials)
 thompson_regrets = evaluate(Thompson, horizon, trials)
