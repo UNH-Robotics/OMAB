@@ -5,7 +5,6 @@ import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
 import edu.unh.cs.ai.omab.experiment.Configuration
 import edu.unh.cs.ai.omab.experiment.Result
-import edu.unh.cs.ai.omab.utils.sampleCorrection
 import org.apache.commons.math3.distribution.BetaDistribution
 import java.util.*
 import java.util.stream.IntStream
@@ -13,57 +12,25 @@ import java.util.stream.IntStream
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
-fun thompsonSampling(horizon: Int, world: Simulator, arms: Int, rewards: DoubleArray, specialSauce: Boolean): List<Double> {
+fun thompsonSampling(horizon: Int, world: Simulator, arms: Int, armRewards: DoubleArray): List<Double> {
     val mdp: MDP = MDP(numberOfActions = arms)
+    mdp.setRewards(armRewards)
+
     var currentState: BeliefState = mdp.startState
-    mdp.setRewards(rewards)
     val rewards: MutableList<Double> = ArrayList(horizon)
-    var sum = 0.0
 
-    (0..horizon - 1).forEach { level ->
-
+    (0..horizon - 1).forEach {
         val distributions = (0..currentState.alphas.size - 1).map {
             BetaDistribution(currentState.alphas[it].toDouble(), currentState.betas[it].toDouble())
         }
 
-        val samples = (0..distributions.size - 1).map {
-            distributions[it].inverseCumulativeProbability(world.random.nextDouble())
-        }
-
-//        val leftBetaDistribution = BetaDistribution(currentState.alphaLeft.toDouble(), currentState.betaLeft.toDouble())
-//        val rightBetaDistribution = BetaDistribution(currentState.alphaRight.toDouble(), currentState.betaRight.toDouble())
-
-//        val leftSample = leftBetaDistribution.inverseCumulativeProbability(world.random.nextDouble())
-//        val rightSample = rightBetaDistribution.inverseCumulativeProbability(world.random.nextDouble())
-
-
-
-        var bestAction = 0
-        (0..samples.size - 1).forEach {
-            if (samples[bestAction] < samples[it]) {
-                bestAction = it
-            } else {
-                bestAction = bestAction
-            }
-        }
-
-        if(specialSauce) {
-            val newTransitions = sampleCorrection(currentState)
-            if(!newTransitions[0].isNaN()) {
-                world.updateTransitionProbabilities(sampleCorrection(currentState))
-            }
-        }
+        val samples = distributions.map { it.inverseCumulativeProbability(world.random.nextDouble()) }
+        val bestAction = (0..samples.size - 1).maxBy { samples[it] }!!
 
         val (nextState, reward) = world.transition(currentState, bestAction)
-//        val (nextState, reward) = if (leftSample > rightSample) {
-//            world.transition(currentState, LEFT)
-//        } else {
-//            world.transition(currentState, RIGHT)
-//        }
 
         currentState = nextState
-        sum += reward
-        rewards.add(sum / (level + 1.0))
+        rewards.add(reward)
     }
 
     return rewards
@@ -73,22 +40,26 @@ fun executeThompsonSampling(world: Simulator, simulator: Simulator, probabilitie
     val results: MutableList<Result> = ArrayList(configuration.iterations)
     val expectedMaxReward = probabilities.max()!!
 
+    // Do multiple experiments
     val rewardsList = IntStream.range(0, configuration.iterations).mapToObj {
-        thompsonSampling(configuration.horizon, world, configuration.arms, configuration.rewards, configuration.specialSauce)
+        thompsonSampling(configuration.horizon, world, configuration.arms, configuration.rewards)
     }
 
-    val sumOfRewards = DoubleArray(configuration.horizon)
+    val averageRewards = DoubleArray(configuration.horizon)
     rewardsList.forEach { rewards ->
         (0..configuration.horizon - 1).forEach {
-            sumOfRewards[it] = rewards[it] + sumOfRewards[it]
+            averageRewards[it] = rewards[it] / configuration.iterations + averageRewards[it]
         }
     }
 
-    val averageRegret = sumOfRewards.mapIndexed { level, reward -> (expectedMaxReward) - reward / configuration.iterations / level}
-    val cumSumRegret = sumOfRewards.mapIndexed { level, reward -> (expectedMaxReward) * level - reward / configuration.iterations }
-    var sauceFlag = ""
-    if (configuration.specialSauce) sauceFlag = "SS" else sauceFlag = sauceFlag
-    results.add(Result("TS $sauceFlag", probabilities, expectedMaxReward, averageRegret.last(), expectedMaxReward - averageRegret.last(), averageRegret, cumSumRegret))
+    val averageRegrets = averageRewards.mapIndexed { level, reward -> expectedMaxReward - reward }
+    var sum = 0.0
+    val cumSumRegrets = averageRegrets.map {
+        sum += it
+        sum
+    }
+
+    results.add(Result("TS", probabilities, expectedMaxReward, averageRegrets.last(), expectedMaxReward - averageRegrets.last(), averageRegrets, cumSumRegrets))
 
     return results
 }

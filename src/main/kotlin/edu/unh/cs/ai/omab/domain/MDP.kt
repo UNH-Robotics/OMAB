@@ -1,6 +1,10 @@
 package edu.unh.cs.ai.omab.domain
 
 import edu.unh.cs.ai.omab.utils.maxIndexAfter
+import edu.unh.cs.ai.omab.utils.minIndexBefore
+import edu.unh.cs.ai.omab.utils.smallerIndicesBefore
+import lpsolve.LpSolve
+import lpsolve.LpSolveException
 import java.util.*
 
 /**
@@ -33,6 +37,12 @@ data class BeliefState(val alphas: IntArray, val betas: IntArray) {
         }
     }
 
+    override fun toString(): String {
+        val builder = StringBuilder("State: ")
+        (alphas zip betas).forEach { builder.append("[${it.first} ${it.second}]") }
+        return builder.toString()
+    }
+
     fun nextState(action: Int, success: Boolean): BeliefState {
         assert(action >= 0 && action < alphas.size - 1)
         val newAlphas = alphas.copyOf()
@@ -54,31 +64,150 @@ data class BeliefState(val alphas: IntArray, val betas: IntArray) {
     }
 
     /**
+     * @return True if all arm's probability is higher than the arm's probability on its right, else false.
+     */
+    fun isConsistent(): Boolean = alphas.indices.drop(1).all { actionMean(it - 1) >= actionMean(it) }
+
+    /**
      * Create a new BeliefState that is consistent with the prior knowledge.
      */
     fun augment(): BeliefState {
+//        return this
         val augmentedAlphas = alphas.copyOf()
         val augmentedBetas = betas.copyOf()
 
         val probabilities = DoubleArray(size, { actionMean(it) })
-        val safe = BooleanArray(size, {false})
 
-        // We don't have to check the last state
-        (0..size - 1).forEach {
-            if (probabilities.maxIndexAfter(it) == it) {
-                // TODO check on the left side as well this should be the minimum
-                safe[it]// This is safe
-            } else {
-                // We should fix everything on the right or wait to be fixed
-                // If we fixed on the right we can check for safety again
-                // If we are safe after fix all nodes we fixed including us are safe
+        // Skip augmentation if the state is already consistent
+        val consistent = probabilities.indices.drop(1).all { probabilities[it - 1] >= probabilities[it] }
+        if (consistent) return this
+
+        val originalProbabilities = probabilities.copyOf()
+        val safe = BooleanArray(size, { false })
+
+        fun balance(indices: List<Int>) {
+            // Always use the original probabilities and counts for balancing
+
+            val totalWeight = indices.sumBy { actionSum(it) }
+            val weightedProbabilitySum = indices.sumByDouble { originalProbabilities[it] * actionSum(it) }
+
+            val weightedProbabilityAverage = weightedProbabilitySum / totalWeight
+
+            // Hacky approximation (additive)
+            indices.forEach {
+                val probability = originalProbabilities[it]
+                if (probability == weightedProbabilityAverage) return@forEach
+
+                if (probability > weightedProbabilityAverage) {
+                    // Probability has to be decreased by increasing beta
+                    val α = alphas[it]
+                    val β = betas[it]
+
+                    val x = α / weightedProbabilityAverage - (α + β)
+
+                    augmentedAlphas[it] = α
+                    augmentedBetas[it] = β + Math.round(x).toInt()
+
+                } else {
+                    // Probability has to be increased by increasing alpha
+                    val α = alphas[it]
+                    val β = betas[it]
+
+
+                    val x = (weightedProbabilityAverage * (α + β) - α) / (1 + weightedProbabilityAverage)
+
+                    augmentedAlphas[it] = α + Math.round(x).toInt()
+                    augmentedBetas[it] = β
+                }
+
+                probabilities[it] = augmentedAlphas[it].toDouble() / (augmentedAlphas[it] + augmentedBetas[it])
             }
-
-            val lowerAlpha = alphas[it]
-            val lowerBeta = betas[it]
         }
 
-        return BeliefState(augmentedAlphas, augmentedBetas)
+        // We don't have to check the last state
+        alphas.indices.forEach {
+            when {
+            // We are safe
+                probabilities.maxIndexAfter(it) == it && probabilities.minIndexBefore(it) == it -> safe[it]// This is safe
+            // We are not safe but should not do anything
+                probabilities.maxIndexAfter(it) != it -> Unit
+            // We are not safe and we should fix things
+                else -> {
+                    val indicesToBalance = probabilities.smallerIndicesBefore(it)!!
+                    indicesToBalance.add(it)
+                    balance(indicesToBalance)
+                }
+
+            // We should fix everything on the right or wait to be fixed
+            // If we fixed on the right we can check for safety again
+            // If we are safe after fix all nodes we fixed including us are safe
+            }
+
+//            val lowerAlpha = alphas[it]
+//            val lowerBeta = betas[it]
+        }
+
+        val augmentedState = BeliefState(augmentedAlphas, augmentedBetas)
+        System.out.println("\nOriginal: $this")
+        System.out.println("Augmented: $augmentedState")
+
+        return augmentedState
+    }
+
+    fun successors(): List<BeliefState> = alphas.indices
+            .map { listOf(nextState(it, true), nextState(it, false)) }
+            .flatten()
+
+    fun recursiveAugment(): BeliefState {
+        if (isConsistent()) return this
+
+        val queue = ArrayDeque<BeliefState>()
+        queue += this.successors()
+
+        while(queue.isNotEmpty()) {
+            val state = queue.removeFirst()
+
+            if (state.isConsistent()) {
+//                System.out.println("\nOriginal: $this")
+//                System.out.println("Augmented: $state")
+                return state
+            }
+            queue += state.successors()
+        }
+
+        throw RuntimeException("Consistent state is not reachable")
+    }
+
+    fun augmentAsLP(): BeliefState {
+        try {
+            // Create a problem with 4 variables and 0 constraints
+            val solver = LpSolve.makeLp(0, 4)
+
+            // add constraints
+            solver.strAddConstraint("3 2 2 1", LpSolve.LE, 4.0)
+            solver.strAddConstraint("0 4 3 1", LpSolve.GE, 3.0)
+
+
+            // set objective function
+            solver.strSetObjFn("2 3 -2 3")
+
+            // solve the problem
+            solver.solve()
+
+            // print solution
+            System.out.println("Value of objective function: " + solver.getObjective())
+            val `var` = solver.getPtrVariables()
+            for (i in `var`.indices) {
+                println("Value of var[" + i + "] = " + `var`[i])
+            }
+
+            // delete the problem and free memory
+            solver.deleteLp()
+        } catch (e: LpSolveException) {
+            e.printStackTrace()
+        }
+
+        TODO()
     }
 }
 
@@ -86,18 +215,12 @@ class MDP(depth: Int? = null, val numberOfActions: Int) {
 
     val depth = depth
     val states: MutableMap<BeliefState, BeliefState> = HashMap()
-    private val mapsByLevel: Array<MutableMap<BeliefState, BeliefState>>
-    private val statesByLevel: Array<MutableList<BeliefState>>
+    private val mapsByLevel = Array<MutableMap<BeliefState, BeliefState>>(depth?.plus(1) ?: 0, { HashMap<BeliefState, BeliefState>() })
+    private val statesByLevel = Array<MutableList<BeliefState>>(depth?.plus(1) ?: 0, { ArrayList<BeliefState>() })
     private val rewards = doubleArrayOf(1.0, 1.0, 1.0)
 
     val startState = BeliefState(IntArray(numberOfActions, { 1 }), IntArray(numberOfActions, { 1 }))
     val actions = IntArray(numberOfActions, { it })
-
-    init {
-        mapsByLevel = Array<MutableMap<BeliefState, BeliefState>>(depth?.plus(1) ?: 0, { HashMap<BeliefState, BeliefState>() })
-        statesByLevel = Array<MutableList<BeliefState>>(depth?.plus(1) ?: 0, { ArrayList<BeliefState>() })
-    }
-
 
     fun getReward(action: Int): Double {
         return rewards[action]

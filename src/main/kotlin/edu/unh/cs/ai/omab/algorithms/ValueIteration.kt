@@ -41,8 +41,7 @@ fun onlineValueIteration(horizon: Int, world: Simulator, simulator: Simulator): 
 }
 
 fun valueIteration(mdp: MDP, horizon: Int, world: Simulator): List<Double> {
-    val averageRewards: MutableList<Double> = ArrayList(horizon)
-    var sum = 0.0
+    val rewards: MutableList<Double> = ArrayList(horizon)
     var currentState = mdp.startState
     (0..horizon - 1).forEach { level ->
         // Select action based on the policy
@@ -51,11 +50,10 @@ fun valueIteration(mdp: MDP, horizon: Int, world: Simulator): List<Double> {
         val (nextState, reward) = world.transition(currentState, bestAction)
         currentState = nextState
 
-        sum += reward
-        averageRewards.add(sum / (level + 1.0))
+        rewards.add(reward)
     }
 
-    return averageRewards
+    return rewards
 }
 
 fun initializeMDP(horizon: Int, arms: Int): MDP {
@@ -86,17 +84,20 @@ fun executeValueIteration(world: Simulator, simulator: Simulator, probabilities:
         valueIteration(mdp, configuration.horizon, world)
     }
 
-    val sumOfRewards = DoubleArray(configuration.horizon)
+    val averageRewards = DoubleArray(configuration.horizon)
     rewardsList.forEach { rewards ->
         (0..configuration.horizon - 1).forEach {
-            sumOfRewards[it] = rewards[it] + sumOfRewards[it]
+            averageRewards[it] = rewards[it] + averageRewards[it]
         }
     }
 
-    val averageRegret = sumOfRewards.mapIndexed { level, reward -> (expectedMaxReward) - reward / configuration.iterations / level}
-    val cumSumRegret = sumOfRewards.mapIndexed { level, reward -> (expectedMaxReward) * level - reward / configuration.iterations }
-
-    results.add(Result("VI", probabilities, expectedMaxReward, averageRegret.last(), expectedMaxReward - averageRegret.last(), averageRegret, cumSumRegret))
+    val averageRegrets = averageRewards.mapIndexed { level, reward -> expectedMaxReward - reward}
+    var sum = 0.0
+    val cumSumRegrets = averageRegrets.map {
+        sum += it
+        sum
+    }
+    results.add(Result("VI", probabilities, expectedMaxReward, averageRegrets.last(), expectedMaxReward - averageRegrets.last(), averageRegrets, cumSumRegrets))
 
     return results
 }

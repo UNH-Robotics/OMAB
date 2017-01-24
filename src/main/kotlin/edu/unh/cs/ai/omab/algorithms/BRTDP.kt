@@ -177,12 +177,13 @@ fun executeBrtdp(world: Simulator, simulator: Simulator, probabilities: DoubleAr
             }
         }
 
-        val averageRewards = sumOfRewards.map { expectedMaxReward - it / configuration.horizon }
+        val averageRegret = sumOfRewards.mapIndexed { level, reward -> (expectedMaxReward) - reward / configuration.iterations / level}
+        val cumSumRegret = sumOfRewards.mapIndexed { level, reward -> (expectedMaxReward) * level - reward / configuration.iterations }
 
         println("BRTDP: $rollOutCount, probabilities: $probabilities, expectedMaxReward: $expectedMaxReward, " +
-                "averageRewards.last(): ${averageRewards.last()}, averageRewards: $averageRewards")
+                "averageRewards.last(): ${averageRegret.last()}, averageRegret: $averageRegret")
 
-        results.add(Result("BRTDP: $rollOutCount", probabilities, expectedMaxReward, averageRewards.last(), expectedMaxReward - averageRewards.last(), averageRewards))
+        results.add(Result("BRTDP: $rollOutCount", probabilities, expectedMaxReward, averageRegret.last(), expectedMaxReward - averageRegret.last(), averageRegret, cumSumRegret))
     }
 
     return results
