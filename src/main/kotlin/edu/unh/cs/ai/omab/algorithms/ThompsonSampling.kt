@@ -12,24 +12,27 @@ import java.util.stream.IntStream
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
-fun thompsonSampling(horizon: Int, world: Simulator, arms: Int, armRewards: DoubleArray): List<Double> {
+fun thompsonSampling(horizon: Int, world: Simulator, arms: Int, armRewards: DoubleArray, configuration: Configuration): List<Double> {
     val mdp: MDP = MDP(numberOfActions = arms)
     mdp.setRewards(armRewards)
 
     var currentState: BeliefState = mdp.startState
+    var augmentedState: BeliefState = currentState
     val rewards: MutableList<Double> = ArrayList(horizon)
 
     (0..horizon - 1).forEach {
-        val distributions = (0..currentState.alphas.size - 1).map {
-            BetaDistribution(currentState.alphas[it].toDouble(), currentState.betas[it].toDouble())
+        val distributions = (0..augmentedState.alphas.size - 1).map {
+            BetaDistribution(augmentedState.alphas[it].toDouble(), augmentedState.betas[it].toDouble())
         }
 
         val samples = distributions.map { it.inverseCumulativeProbability(world.random.nextDouble()) }
         val bestAction = (0..samples.size - 1).maxBy { samples[it] }!!
 
         val (nextState, reward) = world.transition(currentState, bestAction)
-
         currentState = nextState
+
+
+        if (!configuration.ignoreInconsistentState || currentState.isConsistent()) augmentedState = currentState
         rewards.add(reward)
     }
 
@@ -42,7 +45,7 @@ fun executeThompsonSampling(world: Simulator, simulator: Simulator, probabilitie
 
     // Do multiple experiments
     val rewardsList = IntStream.range(0, configuration.iterations).mapToObj {
-        thompsonSampling(configuration.horizon, world, configuration.arms, configuration.rewards)
+        thompsonSampling(configuration.horizon, world, configuration.arms, configuration.rewards, configuration)
     }
 
     val averageRewards = DoubleArray(configuration.horizon)
@@ -59,7 +62,7 @@ fun executeThompsonSampling(world: Simulator, simulator: Simulator, probabilitie
         sum
     }
 
-    results.add(Result("TS", probabilities, expectedMaxReward, averageRegrets.last(), expectedMaxReward - averageRegrets.last(), averageRegrets, cumSumRegrets))
+    results.add(Result("TS${if (configuration.ignoreInconsistentState) "-IGNORE" else ""}", probabilities, expectedMaxReward, averageRegrets.last(), expectedMaxReward - averageRegrets.last(), averageRegrets, cumSumRegrets))
 
     return results
 }

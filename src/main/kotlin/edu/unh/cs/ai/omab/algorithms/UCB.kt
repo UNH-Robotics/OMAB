@@ -14,7 +14,7 @@ import kotlin.Double.Companion.POSITIVE_INFINITY
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
-private fun upperConfidenceBounds(horizon: Int, world: Simulator, arms: Int, armRewards: DoubleArray): List<Double> {
+private fun upperConfidenceBounds(horizon: Int, world: Simulator, arms: Int, armRewards: DoubleArray, configuration: Configuration): List<Double> {
     val mdp: MDP = MDP(numberOfActions = arms)
     mdp.setRewards(armRewards)
 
@@ -31,7 +31,8 @@ private fun upperConfidenceBounds(horizon: Int, world: Simulator, arms: Int, arm
 
         val (nextState, reward) = world.transition(currentState, bestAction)
         currentState = nextState
-        augmentedState = currentState
+
+        if (!configuration.ignoreInconsistentState || currentState.isConsistent()) augmentedState = currentState
         rewards.add(reward)
     }
 
@@ -47,7 +48,7 @@ fun executeUcb(world: Simulator, simulator: Simulator, probabilities: DoubleArra
     val expectedMaxReward = probabilities.max()!!
 
     val rewardsList = IntStream.range(0, configuration.iterations).mapToObj {
-        upperConfidenceBounds(configuration.horizon, world, configuration.arms, configuration.rewards)
+        upperConfidenceBounds(configuration.horizon, world, configuration.arms, configuration.rewards, configuration)
     }
 
     val averageRewards = DoubleArray(configuration.horizon)
@@ -64,7 +65,7 @@ fun executeUcb(world: Simulator, simulator: Simulator, probabilities: DoubleArra
         sum
     }
 
-    results.add(Result("UCB", probabilities, expectedMaxReward, averageRegrets.last(), expectedMaxReward - averageRegrets.last(), averageRegrets, cumSumRegrets))
+    results.add(Result("UCB${if (configuration.ignoreInconsistentState) "-IGNORE" else ""}", probabilities, expectedMaxReward, averageRegrets.last(), expectedMaxReward - averageRegrets.last(), averageRegrets, cumSumRegrets))
 
     return results
 }

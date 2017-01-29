@@ -17,6 +17,7 @@ data class BeliefState(val alphas: IntArray, val betas: IntArray) {
     fun alphaSum() = alphas.sum()
     fun betaSum() = betas.sum()
     fun totalSum() = alphaSum() + betaSum()
+    fun totalSteps() = totalSum() - size * 2
 
     val size: Int
         get() = alphas.size
@@ -154,29 +155,32 @@ data class BeliefState(val alphas: IntArray, val betas: IntArray) {
         return augmentedState
     }
 
-    fun successors(): List<BeliefState> = alphas.indices
-            .map { listOf(nextState(it, true), nextState(it, false)) }
-            .flatten()
-
-    fun recursiveAugment(): BeliefState {
-        if (isConsistent()) return this
-
-        val queue = ArrayDeque<BeliefState>()
-        queue += this.successors()
-
-        while(queue.isNotEmpty()) {
-            val state = queue.removeFirst()
-
-            if (state.isConsistent()) {
-//                System.out.println("\nOriginal: $this")
-//                System.out.println("Augmented: $state")
-                return state
+    fun successors(): List<Pair<SuccessorBundle, SuccessorBundle>> = alphas.indices
+            .map {
+                SuccessorBundle(nextState(it, true), true, it) to SuccessorBundle(nextState(it, false), false, it)
             }
-            queue += state.successors()
-        }
 
-        throw RuntimeException("Consistent state is not reachable")
-    }
+    data class SuccessorBundle(val state: BeliefState, val success: Boolean, val action: Int)
+
+//    fun recursiveAugment(): BeliefState {
+//        if (isConsistent()) return this
+//
+//        val queue = ArrayDeque<BeliefState>()
+//        queue += this.successors()
+//
+//        while (queue.isNotEmpty()) {
+//            val state = queue.removeFirst()
+//
+//            if (state.isConsistent()) {
+////                System.out.println("\nOriginal: $this")
+////                System.out.println("Augmented: $state")
+//                return state
+//            }
+//            queue += state.successors()
+//        }
+//
+//        throw RuntimeException("Consistent state is not reachable")
+//    }
 
     fun augmentAsLP(): BeliefState {
         try {
@@ -213,7 +217,6 @@ data class BeliefState(val alphas: IntArray, val betas: IntArray) {
 
 class MDP(depth: Int? = null, val numberOfActions: Int) {
 
-    val depth = depth
     val states: MutableMap<BeliefState, BeliefState> = HashMap()
     private val mapsByLevel = Array<MutableMap<BeliefState, BeliefState>>(depth?.plus(1) ?: 0, { HashMap<BeliefState, BeliefState>() })
     private val statesByLevel = Array<MutableList<BeliefState>>(depth?.plus(1) ?: 0, { ArrayList<BeliefState>() })
@@ -231,7 +234,7 @@ class MDP(depth: Int? = null, val numberOfActions: Int) {
         (0..newRewards.size - 1).forEach { rewards[it] = newRewards[it] }
     }
 
-    fun addStates(statesToAdd: ArrayList<BeliefState>) {
+    fun addStates(statesToAdd: Iterable<BeliefState>) {
         statesToAdd.forEach {
             val level = it.alphaSum() + it.betaSum() - (2 * numberOfActions)
             mapsByLevel[level][it] = it
@@ -264,7 +267,6 @@ class MDP(depth: Int? = null, val numberOfActions: Int) {
         if (numberOfActions == 2) {
             return generateStates2(depth, state)
         } else {
-            levelGeneration.clear()
             return generateStates(0, depth, state)
         }
     }
@@ -286,11 +288,12 @@ class MDP(depth: Int? = null, val numberOfActions: Int) {
             if (!uniqueStates.contains(it)) uniqueStates.add(it) else {
             }
         }
+
         return uniqueStates
     }
 
-    private var levelGeneration = ArrayList<BeliefState>()
     private fun generateStates(depth: Int, level: Int, state: BeliefState): ArrayList<BeliefState> {
+        var levelGeneration = ArrayList<BeliefState>()
         val currentLevel = ArrayList<BeliefState>()
         currentLevel.add(state)
         if (level == 0) {
@@ -320,6 +323,19 @@ class MDP(depth: Int? = null, val numberOfActions: Int) {
 //        return levelGeneration
         return ArrayList(levelGeneration.filter { it.totalSum() - (2 * numberOfActions) == level })
     }
+
+//    fun generateStates(state: BeliefState, depth: Int) {
+//        val queue = ArrayList<BeliefState>()
+//        val set = hashSetOf<BeliefState>()
+//
+//        (1..depth).forEach {
+//            queue.forEach {
+//                set += it.successors()
+//                addStates(set)
+//            }
+//        }
+//
+//    }
 
     /*if (depth >= 0) {
         (0..(numberOfActions * 2) - 1).forEach {
@@ -369,7 +385,6 @@ class MDP(depth: Int? = null, val numberOfActions: Int) {
     fun getLookupState(level: Int, state: BeliefState): BeliefState = mapsByLevel[level][state]
             ?: throw RuntimeException("Cannot find state: $state on level $level")
 
-    var count = 0
 }
 
 fun calculateQ(state: BeliefState, action: Int, mdp: MDP): Double {

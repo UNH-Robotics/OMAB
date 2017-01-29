@@ -73,7 +73,6 @@ fun initializeMDP(horizon: Int, arms: Int): MDP {
     return mdp
 }
 
-
 fun executeValueIteration(world: Simulator, simulator: Simulator, probabilities: DoubleArray, configuration: Configuration): List<Result> {
     val results: MutableList<Result> = ArrayList(configuration.iterations)
     val expectedMaxReward = probabilities.max()!!

@@ -26,6 +26,12 @@ repositories {
     }
 }
 
+
+sourceSets {
+    main.java.srcDirs += file('src/main/kotlin')
+    test.java.srcDirs += file('src/test/kotlin')
+}
+
 task execute(type: JavaExec) {
     main = 'edu.unh.cs.ai.omab.MainKt'
     def argList = ["results/resultT.dat"]
@@ -47,5 +53,5 @@ dependencies {
     compile group: 'com.datumbox', name: 'lpsolve', version: '5.5.2.0'
 //    compile name: 'javailp-1.2a'
 
-    testCompile group: 'junit', name: 'junit', version: '4.11'
+    testCompile group: 'junit', name: 'junit', version: '4.12'
 }

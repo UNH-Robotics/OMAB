@@ -8,4 +8,5 @@ class Configuration(
         val rewards: DoubleArray,
         val horizon: Int,
         val experimentProbabilities: List<DoubleArray>,
-        val iterations: Int)
+        val iterations: Int,
+        var ignoreInconsistentState: Boolean = false)

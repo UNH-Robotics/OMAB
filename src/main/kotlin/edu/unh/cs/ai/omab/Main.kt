@@ -25,7 +25,7 @@ fun main(args: Array<String>) {
     val configuration = Configuration(
             arms = 3,
             rewards = doubleArrayOf(1.0, 1.0, 1.0),
-            horizon = 6,
+            horizon = 30,
             experimentProbabilities = generateProbabilities(resolution = 20, count = 3),
             iterations = 10)
 
@@ -38,6 +38,12 @@ fun main(args: Array<String>) {
     evaluateAlgorithm("UCB", ::executeUcb, results, configuration)
 //    evaluateAlgorithm("UCB SS", ::executeUcb, results, configurationSS)
     evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, results, configuration)
+
+    configuration.ignoreInconsistentState = true
+
+    evaluateAlgorithm("UCB", ::executeUcb, results, configuration)
+    evaluateAlgorithm("Thompson Sampling", ::executeThompsonSampling, results, configuration)
+
 //    evaluateAlgorithm("Thompson Sampling SS", ::executeThompsonSampling, results, configurationSS)
 //    evaluateAlgorithm("Greedy", ::expectationMaximization, results, configuration)
 //    evaluateAlgorithm("RTDP", ::executeRtdp, results, configuration)
