@@ -1,6 +1,8 @@
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy as sp
+import scipy.stats
 from math import sqrt, log
 from random import random
 
@@ -296,7 +298,6 @@ class Gittins:
         else:
             raise RuntimeError("Invalid arm number")
 
-
 ## Compute the mean regret
 
 horizon = 100
@@ -307,8 +308,33 @@ thompson_regrets = evaluate(Thompson, horizon, trials)
 ola_regrets = evaluate(OptimisticLookAhead, horizon, trials)
 gittins_regrets = evaluate(Gittins, horizon, trials)
 
-## Plot the mean regret
+## Confidence interval
+def calc_confidence_interval(data, confidence=0.95):
+    a = 1.0*np.array(data)
+    n = len(a)
+    m, se = np.mean(a), scipy.stats.sem(a)
+    e = se * sp.stats.t._ppf((1+confidence)/2., n-1)
+    return m, e
 
+ymean = []
+yconf = []
+for t in range(horizon):
+    m, e = calc_confidence_interval(ola_regrets[:, t])
+    ymean.append(m)
+    yconf.append(e)
+
+plt.figure(num=1, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
+plt.errorbar(x=np.arange(0, 100, 1), y=ymean, yerr=yconf)
+plt.legend(loc='upper left')
+plt.xlabel('Horizon')
+plt.ylabel('Regret with cofidence interval')
+plt.title("Confidence interval on the mean regret of optimistic lookahead")
+plt.grid()
+plt.savefig('confidence_interval.pdf')
+plt.show()
+
+## Plot the mean regret
+plt.figure(num=2, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
 plt.plot(ucb_regrets.mean(0), label='UCB')
 plt.plot(thompson_regrets.mean(0), label='Thompson')
 plt.plot(ola_regrets.mean(0), label='OptimisticLookahead')
