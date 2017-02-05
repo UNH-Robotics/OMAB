@@ -39,8 +39,11 @@ private fun upperConfidenceBounds(horizon: Int, world: Simulator, arms: Int, arm
     return rewards
 }
 
-fun upperConfidenceBoundsValue(μ: Double, t: Int, depth: Int, α: Double = 2.0): Double {
-    return if (t == 1) POSITIVE_INFINITY else μ + sqrt(α * log(t.toDouble()) / (2 * depth * (t - 1)))
+fun upperConfidenceBoundsValue(μ: Double, t: Int, n: Int, α: Double = 2.0): Double {
+    val ucb = if (t == 1) POSITIVE_INFINITY else μ + sqrt(α * log(t.toDouble()) / (2 * n
+            /** (t - 1)*/))
+//    println("μ: $μ, t: $t, n: $n, α: $α UCB: $ucb")
+    return ucb
 }
 
 fun executeUcb(world: Simulator, simulator: Simulator, probabilities: DoubleArray, configuration: Configuration): List<Result> {
