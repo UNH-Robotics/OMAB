@@ -95,7 +95,7 @@ class OptimisticLookAhead:
         self.Acountneg = 1;
         self.Bcountpos = 1;
         self.Bcountneg = 1;
-        self.betasamplecount = 10
+        self.betasamplecount = 500
 
     def choose(self, t):
         """ Which arm to choose; t is the current time step. Returns arm index """
