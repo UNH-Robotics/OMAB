@@ -95,7 +95,7 @@ class OptimisticLookAhead:
         self.Acountneg = 1;
         self.Bcountpos = 1;
         self.Bcountneg = 1;
-        self.betasamplecount = 500
+        self.betasamplecount = 10
 
     def choose(self, t):
         """ Which arm to choose; t is the current time step. Returns arm index """
@@ -103,7 +103,7 @@ class OptimisticLookAhead:
         tRemain = horizon - ((self.Acountpos + self.Acountneg + self.Bcountpos + self.Bcountneg) - 4)
 
         # TODO: WE NEED TO EXPLAIN THIS!!!
-        discount = 0.95
+        discount = 0.9 if self.betasamplecount>=100 else np.log2(self.betasamplecount)/10
         tRemain = (1 - discount ** tRemain) / (1 - discount)
 
         v01 = np.mean(
@@ -130,11 +130,6 @@ class OptimisticLookAhead:
         pB = self.Bcountpos / (self.Bcountpos + self.Bcountneg)
         valueB = pB * (1 + v11) + (1 - pB) * v12
 
-        # print(v01,v02,v11,v12)
-        # print(pA, pB)
-        # print(self.Acountpos, self.Acountneg, valueA, self.Bcountpos, self.Bcountneg, valueB)
-        # print('-----')
-
         if valueA > valueB:
             return 0
         else:
@@ -155,7 +150,7 @@ class OptimisticLookAhead:
         else:
             raise RuntimeError("Invalid arm number")
 
-
+"""
 horizon = 100
 trials = 10
 
@@ -168,7 +163,7 @@ plt.ylabel('Regret')
 plt.grid()
 plt.savefig('regrets.pdf')
 plt.show()
-
+"""
 
 ## Simple methods            
 
