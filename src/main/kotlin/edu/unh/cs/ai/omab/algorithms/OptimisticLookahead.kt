@@ -41,6 +41,7 @@ fun executeStochasticAlgorithm(world: Simulator, simulator: Simulator, configura
 }
 
 fun optimisticLookahead(state: BeliefState, configuration: Configuration, random: Random): Int {
+    // Acquire parameters
     val lookahead = min(configuration[LOOKAHEAD] as Int, configuration.horizon)
     val remainingSteps = configuration.horizon - state.totalSteps() - lookahead
     val discountFactor = configuration[DISCOUNT] as Double
@@ -50,9 +51,10 @@ fun optimisticLookahead(state: BeliefState, configuration: Configuration, random
 
     val exploredStates = hashMapOf<BeliefState, BeliefState>()
 
+    // Explore utilities using depth-first search
     fun lookahead(state: BeliefState, currentDepth: Int, maximumDepth: Int): Double {
         return if (currentDepth >= maximumDepth) {
-            sampleBetaValue(state, betaSampleCount, random, constrainedProbabilities, configuration) * discountedRemainingSteps
+            sampleBetaValue(state, betaSampleCount, constrainedProbabilities, configuration.rewards) * discountedRemainingSteps
         } else {
             state.successors().map {
                 // Reuse the utility if already calculated
@@ -92,21 +94,32 @@ fun optimisticLookahead(state: BeliefState, configuration: Configuration, random
     }!!.first.action
 }
 
-private fun sampleBetaValue(state: BeliefState, count: Int, random: Random, constraints: Boolean, configuration: Configuration): Double {
-    // If probability constraints are enabled remove the inconsistent probabilities
+/**
+ * Calculate the expected utility of a state by sampling from the beta distribution of each arm.
+ *
+ * @param state belief state.
+ * @param betaSampleCount number of beta samples.
+ * @param constraints if true, filter inconsistent samples/possible probabilities.
+ * @param rewards ordered arm rewards
+ *
+ * @return Utility of the state.
+ */
+private fun sampleBetaValue(state: BeliefState, betaSampleCount: Int, constraints: Boolean, rewards: DoubleArray): Double {
+    val betaDistributions = state.betaDistributions()
+
     return if (constraints) {
-        // Create a beta distribution for each arm
-        val betaDistributions = state.betaDistributions()
-        (1..count)
+        // If probability constraints are enabled remove the inconsistent probabilities
+        (1..betaSampleCount)
+                // Sample arm probability lists
                 .map { betaDistributions.map(BetaDistribution::sample) }
+                // Remove those sampled probability lists that are not conform with the prior constraints
                 .filter { list -> list.indices.drop(1).all { list[it - 1] >= list[it] } }
-                .map { armProbabilities -> state.arms.maxValueBy { arm -> armProbabilities[arm] * configuration.rewards[arm] }!! }
+                // Calculate the best action value for each list
+                .map { armProbabilities -> state.arms.maxValueBy { arm -> armProbabilities[arm] * rewards[arm] }!! }
                 .average()
     } else {
-        val distributions = edu.unh.cs.ai.omab.utils.UncommonDistributions()
-        DoubleArray(count) {
-            //            betaDistributions.maxValueBy(BetaDistribution::sample)!!
-            state.arms.maxValueBy { distributions.rBeta(state.alphas[it].toDouble(), state.betas[it].toDouble()) * configuration.rewards[it] }!!
+        DoubleArray(betaSampleCount) {
+            state.arms.maxValueBy { arm -> betaDistributions[arm].sample() * rewards[arm] }!!
         }.average()
     }
 }

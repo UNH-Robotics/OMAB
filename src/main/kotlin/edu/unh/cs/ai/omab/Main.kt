@@ -26,12 +26,12 @@ fun main(args: Array<String>) {
             arms = 3,
             rewards = doubleArrayOf(0.2, 0.3, 0.4),
             horizon = 100,
-            experimentProbabilities = generateProbabilities(resolution = 10, count = 3),
-            //            experimentProbabilities = listOf(doubleArrayOf(0.5, 1.0)),
-            iterations = 2)
+            experimentProbabilities = generateConstrainedProbabilities(resolution = 10, count = 3),
+            //            experimentProbabilities = listOf(doubleArrayOf(0.9, 0.5, 0.1)),
+            iterations = 5)
 
-    configuration[BETA_SAMPLE_COUNT] = 200
-    configuration[DISCOUNT] = 0.1
+    configuration[BETA_SAMPLE_COUNT] = 300
+    configuration[DISCOUNT] = 0.95
     configuration[CONSTRAINED_PROBABILITIES] = false
 
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
@@ -59,12 +59,12 @@ fun main(args: Array<String>) {
 //    executeAlgorithm2("Optimistic - l1 b1000", ::evaluateStochasticAlgorithm, ::optimisticLookahead, results, configuration)
 //
 //
-    configuration[LOOKAHEAD] = 2
-    executeAlgorithm2("Optimistic - l2 b${configuration[BETA_SAMPLE_COUNT]}", ::evaluateStochasticAlgorithm, ::optimisticLookahead, results, configuration)
+//    configuration[LOOKAHEAD] = 1
+//    executeAlgorithm2("Optimistic - l${configuration[LOOKAHEAD]} b${configuration[BETA_SAMPLE_COUNT]}", ::evaluateStochasticAlgorithm, ::optimisticLookahead, results, configuration)
 
     configuration[CONSTRAINED_PROBABILITIES] = true
-    configuration[LOOKAHEAD] = 2
-    executeAlgorithm2("Optimistic - l2 b${configuration[BETA_SAMPLE_COUNT]} constrained", ::evaluateStochasticAlgorithm, ::optimisticLookahead, results, configuration)
+    configuration[LOOKAHEAD] = 1
+    executeAlgorithm2("Optimistic - l${configuration[LOOKAHEAD]} b${configuration[BETA_SAMPLE_COUNT]} constrained", ::evaluateStochasticAlgorithm, ::optimisticLookahead, results, configuration)
 
 //    configuration[LOOKAHEAD] = 3
 //    executeAlgorithm2("Optimistic - l3 b${configuration[BETA_SAMPLE_COUNT]} constrained", ::evaluateStochasticAlgorithm, ::optimisticLookahead, results, configuration)
@@ -186,7 +186,7 @@ private fun executeAlgorithm(results: MutableList<Result>,
  *
  * @return List of probabilities.
  */
-private fun generateProbabilities(resolution: Int, count: Int): List<DoubleArray> {
+private fun generateConstrainedProbabilities(resolution: Int, count: Int): List<DoubleArray> {
     val step = 1.0 / resolution
 
     fun generateLevel(max: Double): DoubleArray = DoubleArray((max / step).toInt(), { max(0.0, max - (it + 1) * step) })
@@ -221,6 +221,31 @@ private fun generateProbabilities(resolution: Int, count: Int): List<DoubleArray
 
         current = next
         next = ArrayList<DoubleArray>()
+    }
+
+    return current
+}
+
+
+private fun generateUniformProbabilities(resolution: Int, count: Int): List<DoubleArray> {
+    val step = 1.0 / resolution
+
+    val probabilities = DoubleArray(resolution) { step * it }
+    var current: List<DoubleArray> = List(resolution) { DoubleArray(count) }
+
+    current.forEachIndexed { i, doubles ->
+        doubles[0] = probabilities[i]
+    }
+
+    // Generate states level by level
+    (1..count - 1).forEach { level ->
+        current = current.map { left ->
+            probabilities.map { next ->
+                val newProbability = left.copyOf()
+                newProbability[level] = next
+                newProbability
+            }
+        }.flatten()
     }
 
     return current

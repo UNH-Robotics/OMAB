@@ -1,9 +1,9 @@
 package edu.unh.cs.ai.omab.utils
 
 import org.apache.commons.math3.random.MersenneTwister
+import org.apache.commons.math3.random.RandomGenerator
 
-class UncommonDistributions {
-    private val random = MersenneTwister()
+class UncommonDistributions(private val random: RandomGenerator = MersenneTwister()) {
 
     companion object {
         val LOG4 = 1.3862943611198906
