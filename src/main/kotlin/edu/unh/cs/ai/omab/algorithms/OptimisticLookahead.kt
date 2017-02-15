@@ -58,21 +58,23 @@ fun optimisticLookahead(state: BeliefState, configuration: Configuration, random
         } else {
             state.successors().map {
                 // Reuse the utility if already calculated
-                val successUtility = exploredStates[it.first.state]?.utility ?: {
-                    exploredStates[it.first.state] = it.first.state
-                    val utility = lookahead(it.first.state, currentDepth + 1, maximumDepth)
-                    it.first.state.utility = utility
-                    utility
-                }()
+                fun calculateUtility(state: BeliefState): Double {
+                    exploredStates[state] = state
+                    val utility = lookahead(state, currentDepth + 1, maximumDepth)
+                    state.utility = utility
+                    return utility
+                }
 
-                val failUtility = exploredStates[it.second.state]?.utility ?: {
-                    exploredStates[it.second.state] = it.second.state
-                    val utility = lookahead(it.second.state, currentDepth + 1, maximumDepth)
-                    it.second.state.utility = utility
-                    utility
-                }()
+                val successState = it.first.state
+                val successUtility = exploredStates[successState]?.utility ?: calculateUtility(successState)
+
+                val failState = it.second.state
+                val failUtility = exploredStates[failState]?.utility ?: calculateUtility(failState)
 
                 val probability = state.actionMean(it.first.action)
+//                val probability = sampleBetaValue(state, betaSampleCount, constrainedProbabilities, configuration.rewards)
+
+
                 // Multiply the utility by the probability of getting to the state
                 val utility = probability * (configuration.rewards[it.first.action] + successUtility) + (1 - probability) * failUtility
                 utility
