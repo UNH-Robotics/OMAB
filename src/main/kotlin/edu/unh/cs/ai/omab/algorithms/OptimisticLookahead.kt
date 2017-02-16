@@ -45,9 +45,10 @@ fun optimisticLookahead(state: BeliefState, configuration: Configuration, random
     val lookahead = min(configuration[LOOKAHEAD] as Int, configuration.horizon)
     val remainingSteps = configuration.horizon - state.totalSteps() - lookahead
     val discountFactor = configuration[DISCOUNT] as Double
-    val discountedRemainingSteps = (1 - (discountFactor pow remainingSteps)) / (1 - discountFactor)
     val betaSampleCount = configuration[BETA_SAMPLE_COUNT] as Int
     val constrainedProbabilities = configuration[CONSTRAINED_PROBABILITIES] as Boolean
+
+    val discountedRemainingSteps = discountFactor * (1 - (discountFactor pow remainingSteps)) / (1 - discountFactor)
 
     val exploredStates = hashMapOf<BeliefState, BeliefState>()
 
