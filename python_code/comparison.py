@@ -1,8 +1,10 @@
+#!/bin/python
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from math import sqrt, log
 from random import random
+import tqdm
 
 matplotlib.rcParams['ps.useafm'] = True
 matplotlib.rcParams['pdf.use14corefonts'] = True
@@ -52,7 +54,7 @@ def evaluate(method, horizon, runs):
 
     regrets = - np.ones((len(runs), horizon))
 
-    for irun, run in enumerate(runs):
+    for irun, run in enumerate(tqdm.tqdm(runs)):
         # generate problem 
         if run is None:
             pA = np.random.beta(1, 1);
@@ -93,7 +95,7 @@ class OptimisticLookAhead:
         self.Acountneg = 1;
         self.Bcountpos = 1;
         self.Bcountneg = 1;
-        self.betasamplecount = 500
+        self.betasamplecount = 100
 
     def choose(self, t):
         """ Which arm to choose; t is the current time step. Returns arm index """
@@ -101,7 +103,7 @@ class OptimisticLookAhead:
         tRemain = horizon - ((self.Acountpos + self.Acountneg + self.Bcountpos + self.Bcountneg) - 4)
 
         # TODO: WE NEED TO EXPLAIN THIS!!!
-        discount = 0.95
+        discount = 0.8
         tRemain = (1 - discount ** tRemain) / (1 - discount)
 
         v01 = np.mean(
@@ -186,14 +188,18 @@ class UCB:
 
     def choose(self, t):
         """ Which arm to choose; t is the current time step. Returns arm index """
+        
         valA = self.Amean + sqrt((self.alpha * log(t)) / (2 * self.Acount))
         valB = self.Bmean + sqrt((self.alpha * log(t)) / (2 * self.Bcount))
         # the UCB choice
         if valA > valB:
+            #print(t, 0, valA, valB)
             return 0
         elif valA < valB:
+            #print(t,1, valA, valB)
             return 1
         else:
+            #print(t, 0.5, valA, valB)
             return bernoulli(0.5)
 
     def update(self, arm, outcome):
@@ -300,7 +306,7 @@ class Gittins:
 ## Compute the mean regret
 
 horizon = 100
-trials = 200
+trials = 50
 
 ucb_regrets = evaluate(UCB, horizon, trials)
 thompson_regrets = evaluate(Thompson, horizon, trials)
@@ -323,7 +329,7 @@ plt.show()
 ## Compute regret as a function of delta (difference between the two arms)
 
 ticks = 30
-repetitions = 50
+repetitions = 500
 
 # init p values
 runs = tuple(
