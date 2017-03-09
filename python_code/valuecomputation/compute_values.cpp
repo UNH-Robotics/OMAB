@@ -1,3 +1,4 @@
+//usr/bin/g++ compute_values.cpp -fopenmp -march=native -O3 && ./a.out;
 #include<algorithm>
 #include<utility>
 #include<iostream>
@@ -50,7 +51,7 @@ double ucb_benefit(state_t state, long timestep){
 int main(){
     // -- initialize ---------------------------------------------------
     // number of steps (horizon = 1 is 1 state)
-    const uint horizon = 30;
+    const uint horizon = 50;
     // output file name
     const string output_filename = "ucb_value.csv";
 
@@ -87,17 +88,16 @@ int main(){
     // just assume that the value function in the last step is 0
     for(long t = horizon-2; t >= 0; t--){
         // compute state value functions
+        #pragma omp parallel for
         for(long istate=state_count-1; istate >= 0; istate--){
             auto state = states[istate];
-            auto nextstates = transition(state);
-
             if(state.first + state.second - 2 > t){
                 valuefunction(t,istate) = nan("");
-                //cout << ".";
                 continue;
             }
 
             // next states
+            auto nextstates = transition(state);
             pair<state_t, double>
                 positive_sp = nextstates.first,
                 negative_sp = nextstates.second;
