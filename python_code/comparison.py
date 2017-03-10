@@ -225,13 +225,12 @@ class UCB:
         if(t < 10):
             print('UCB', valA, valB)
         
-        return 0
         if valA > valB:
             return 0
         elif valA < valB:
             return 1
         else:
-            return 0 #bernoulli(0.5)
+            return bernoulli(0.5)
 
     def update(self, arm, outcome):
         """ Updates the estimate for the arm outcome """
@@ -308,40 +307,38 @@ class ValueFunction:
     def choose(self, t):
         """ Which arm to choose; t is the current time step. Returns arm index """
 
-        print("VFA state", self.Acountpos, self.Acountneg, self.Bcountpos, self.Bcountneg)
+        #print("VFA state", self.Acountpos, self.Acountneg, self.Bcountpos, self.Bcountneg)
         # the pre-computed value function is 0-based!
         vApos = valuefunction[(t,self.Acountpos+1,self.Acountneg)] + \
                 valuefunction[(t,self.Bcountpos,self.Bcountneg)]
         vAneg = valuefunction[(t,self.Acountpos,self.Acountneg+1)]  + \
                 valuefunction[(t,self.Bcountpos,self.Bcountneg)]  
-        vBpos = valuefunction[(t,self.Bcountpos+1,self.Bcountneg)] 
-        vBneg = valuefunction[(t,self.Bcountpos,self.Bcountneg+1)] 
+        vBpos = valuefunction[(t,self.Bcountpos+1,self.Bcountneg)] + \
+                valuefunction[(t,self.Acountpos,self.Acountneg)]
+        vBneg = valuefunction[(t,self.Bcountpos,self.Bcountneg+1)] + \
+                valuefunction[(t,self.Acountpos,self.Acountneg)]
 
         pA = self.Acountpos / (self.Acountpos + self.Acountneg)
-        assert(pA>=0 and pA <=1)
         qvalueA = pA * (1 + vApos) + (1 - pA) * vAneg
         
-
         pB = self.Bcountpos / (self.Bcountpos + self.Bcountneg)
         qvalueB = pB * (1 + vBpos) + (1 - pB) * vBneg
 
         # adjust value function by subtracting the value of no-action
-        qvalueA += valuefunction[(t-1,self.Acountpos,self.Acountneg)] - \
-                    valuefunction[(t,self.Acountpos,self.Acountneg)] - \
+        qvalueA -= valuefunction[(t,self.Acountpos,self.Acountneg)] + \
                     valuefunction[(t,self.Bcountpos,self.Bcountneg)]
         
-        qvalueB += valuefunction[(t-1,self.Bcountpos,self.Bcountneg)] - valuefunction[(t,self.Bcountpos,self.Bcountneg)]
-
+        qvalueB -= valuefunction[(t,self.Acountpos,self.Acountneg)] + \
+                    valuefunction[(t,self.Bcountpos,self.Bcountneg)]
         if(t < 10):
             print('VFA', qvalueA, qvalueB)
 
-        return 0
         if qvalueA > qvalueB:
             return 0
         elif qvalueA < qvalueB:
             return 1
         else:
-            return 0# bernoulli(0.5)
+            return bernoulli(0.5)
 
     def update(self, arm, outcome):
         """ Updates the estimate for the arm outcome """
@@ -362,14 +359,14 @@ class ValueFunction:
 
 ## Compute the mean regret
 
-horizon = 3
-trials = 1
+horizon = 99
+trials = 100
 
-np.random.seed(0)
-random.seed(0)
+#np.random.seed(0)
+#random.seed(0)
 ucb_regrets = evaluate(UCB, horizon, trials)
-np.random.seed(0)
-random.seed(0)
+#np.random.seed(0)
+#random.seed(0)
 vf_regrets = evaluate(ValueFunction, horizon, trials)
 
 thompson_regrets = evaluate(Thompson, horizon, trials)
@@ -382,7 +379,7 @@ plt.figure(num=2, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
 plt.plot(ucb_regrets.mean(0), label='UCB')
 plt.plot(thompson_regrets.mean(0), label='Thompson')
 #plt.plot(ola_regrets.mean(0), label='OptimisticLookahead')
-plt.plot(vf_regrets.mean(0), label='ValueFunction')
+plt.plot(vf_regrets.mean(0), '--', label='ValueFunction')
 plt.plot(gittins_regrets.mean(0), label='Gittins')
 plt.legend(loc='upper left')
 plt.xlabel('Time step')

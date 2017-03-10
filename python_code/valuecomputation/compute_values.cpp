@@ -45,13 +45,14 @@ int steps_to_end(uint horizon, state_t state){
 double ucb_benefit(state_t state, long timestep){
     assert(timestep >= 0);
     const double alpha = 2.0;
-    return sqrt(alpha * log(timestep+1) / (2.0*double(state.first + state.second)));
+    return sqrt(alpha * log(timestep) / (2.0*double(state.first + state.second)));
 }
 
 int main(){
     // -- initialize ---------------------------------------------------
     // number of steps (horizon = 1 is 1 state)
-    const uint horizon = 20;
+    const uint horizon = 500;
+
     // output file name
     const string output_filename = "ucb_value.csv";
 
@@ -79,20 +80,26 @@ int main(){
     // value function (assumes that it is initialized to all 0s)
     Eigen::MatrixXd valuefunction(horizon, state_count); //timestep, state
     // the value function satisfies:
-    // v_t(s) = B(s,a) - l_t(s,a) + v_{t+1}(s)
+    // v_{t+1}(s) =  l_t(s,a) - B(s,a)
     // where B(s,a) = UCB(s,a) - r(s,a)
-    // and l_t =
+    // and l_t = expected next value (without the immediate reward)
 
     // -- compute state values -------------------------------------------------
     cout << "Computing state values ... " << endl;
     // just assume that the value function in the last step is 0
-    for(long t = horizon-2; t >= 0; t--){
+    #pragma omp parallel for
+    for(long t = horizon-1; t >= 0; t--){
         // compute state value functions
-        #pragma omp parallel for
         for(long istate=state_count-1; istate >= 0; istate--){
             auto state = states[istate];
+            // an impossible state!
             if(state.first + state.second - 2 > t){
                 valuefunction(t,istate) = nan("");
+                continue;
+            }
+            // an edge state - initialize it to 0
+            else if(state.first + state.second - 2 == t){
+                valuefunction(t,istate) = 0;
                 continue;
             }
 
@@ -105,12 +112,13 @@ int main(){
             // value of taking the uncertain function
             // states beyond the horizon have value 0
             auto lvalue =
-                positive_sp.second * valuefunction(t+1, state2index[positive_sp.first]) +
-                negative_sp.second * valuefunction(t+1, state2index[negative_sp.first]);
+                positive_sp.second * valuefunction(t, state2index[positive_sp.first]) +
+                negative_sp.second * valuefunction(t, state2index[negative_sp.first]);
 
             if(t == 0)
                 cout << "ucb benefit:" << ucb_benefit(state, t) << endl;
-            valuefunction(t,istate) = ucb_benefit(state, t) - lvalue + valuefunction(t+1,istate);
+
+            valuefunction(t,istate) =  lvalue - ucb_benefit(state, t);
         }
     }
 
