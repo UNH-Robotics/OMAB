@@ -51,7 +51,7 @@ double ucb_benefit(state_t state, long timestep){
 int main(){
     // -- initialize ---------------------------------------------------
     // number of steps (horizon = 1 is 1 state)
-    const uint horizon = 101;
+    const uint horizon = 201;
 
     // output file name
     const string output_filename = "ucb_value.csv";
@@ -78,28 +78,26 @@ int main(){
         state2index[states[i]] = i;
 
     // value function (assumes that it is initialized to all 0s)
-    Eigen::MatrixXd valuefunction(horizon, state_count); //timestep, state
+    Eigen::ArrayXXd valuefunction = Eigen::ArrayXXd::Zero(horizon, state_count); //timestep, state
     // the value function satisfies:
-    // v_{t+1}(s) =  l_t(s,a) - B(s,a)
+    // v_{t+1}(s) = l_t(s,a) - B(s,a)
     // where B(s,a) = UCB(s,a) - r(s,a)
     // and l_t = expected next value (without the immediate reward)
 
     // -- compute state values -------------------------------------------------
     cout << "Computing state values ... " << endl;
     // just assume that the value function in the last step is 0
-    #pragma omp parallel for
     for(long t = horizon-1; t >= 0; t--){
+
+        // this is the offset for the current horizon
+        double offset = 0;
+
         // compute state value functions
-        for(long istate=state_count-1; istate >= 0; istate--){
+        for(long istate = state_count-1; istate >= 0; istate--){
             auto state = states[istate];
             // an impossible state!
             if(state.first + state.second - 2 > t){
                 valuefunction(t,istate) = nan("");
-                continue;
-            }
-            // an edge state - initialize it to 0
-            else if(state.first + state.second - 2 == t){
-                valuefunction(t,istate) = 0;
                 continue;
             }
 
@@ -109,17 +107,40 @@ int main(){
                 positive_sp = nextstates.first,
                 negative_sp = nextstates.second;
 
-            // value of taking the uncertain function
-            // states beyond the horizon have value 0
-            auto lvalue =
-                positive_sp.second * valuefunction(t, state2index[positive_sp.first]) +
-                negative_sp.second * valuefunction(t, state2index[negative_sp.first]);
+            // an edge state - initialize it to 0
+            if(state.first + state.second - 2 == t){
+                valuefunction(t,istate) = 0;
+            }
+            // compute the value otherwise (no continue to be able to compute the offset)
+            else{
+                // value of taking the uncertain function
+                // states beyond the horizon have value 0
+                double lvaluet =
+                    positive_sp.second * valuefunction(t, state2index[positive_sp.first]) +
+                    negative_sp.second * valuefunction(t, state2index[negative_sp.first]);
+                
+                valuefunction(t,istate) =  lvaluet - ucb_benefit(state, t);
+            }
 
-            if(t == 0)
-                cout << "ucb benefit:" << ucb_benefit(state, t) << endl;
+            // compute an appropriate offset so that the value function is an over-estimate
+            // this is a simplistic version and it will result in a large over-estimate for the
+            // value function with mutliple arms. It may be better to compute the offsets
+            // using approximate dynamic programming
+            // v_{t}(s) >= q_{t}(s,a)
+            if(t < horizon-1){ // ignore the last step
+                double qvalue =
+                    positive_sp.second * (1 + valuefunction(t+1, state2index[positive_sp.first])) +
+                    negative_sp.second * (0 + valuefunction(t+1, state2index[negative_sp.first]));
 
-            valuefunction(t,istate) =  lvalue - ucb_benefit(state, t);
+                offset = max(offset, qvalue - valuefunction(t,istate));
+            }
         }
+
+        // update the vakue function according to offsets (if non-zero)
+        if(offset > numeric_limits<double>::epsilon()){
+            valuefunction.row(t) += offset;
+        }
+        cout << t << ":  " << offset << endl;
     }
 
     auto end = chrono::steady_clock::now();

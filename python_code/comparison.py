@@ -331,9 +331,7 @@ class ValueFunction:
         
         qvalueB -= valuefunction[(t,self.Acountpos,self.Acountneg)] + \
                     valuefunction[(t,self.Bcountpos,self.Bcountneg)]
-        #if(t < 10):
-        #    print('VFA', qvalueA, qvalueB)
-
+                    
         if qvalueA > qvalueB:
             return 0
         elif qvalueA < qvalueB:
@@ -357,25 +355,96 @@ class ValueFunction:
             raise RuntimeError("Invalid arm number")
 
 
+class ValueFunctionLookahead:
+    """
+    Use one-step lookahead with a *linearly separable* value function which
+    is precomputed for eacha arm separately
+    """
+    def __init__(self, lookahead_hor = 1, scale = 1.0):
+        # initialize prior values
+        self.Acountpos = 1
+        self.Acountneg = 1
+        self.Bcountpos = 1
+        self.Bcountneg = 1
+        self.lookahead_hor = lookahead_hor
+        self.cache = {}
+        self.scale = scale
+
+    def _lookahead(self, state, t, steps_left):
+        """ Recursive and dumb lookahead (state values can be computed twice)
+            The order of elements in state is:
+                Acountpos, Acountneg, Bcountpos, Bcountneg 
+            Returns: action, value function
+        """
+        global valuefunction
+        # terminate if this is the last step
+        if steps_left == 0:
+            return -1, self.scale * (valuefunction[(t, state[0], state[1])] + valuefunction[(t, state[2], state[3])])
+
+        # the cache is specific only to the particular run
+        if state in self.cache:
+            return self.cache[state]
+        
+        # the pre-computed value function is 0-based! (t=0 is the first time-step)
+        vApos = self._lookahead((state[0], state[1]+1, state[2], state[3]), t+1, steps_left-1)[1]
+        vAneg = self._lookahead((state[0]+1, state[1], state[2], state[3]), t+1, steps_left-1)[1]
+        vBpos = self._lookahead((state[0], state[1], state[2]+1, state[3]), t+1, steps_left-1)[1]
+        vBneg = self._lookahead((state[0], state[1], state[2], state[3]+1), t+1, steps_left-1)[1]
+
+        pA = state[0] / (state[0] + state[1])
+        qvalueA = pA * (1 + vApos) + (1 - pA) * vAneg
+        
+        pB = state[2] / (state[2] + state[3])
+        qvalueB = pB * (1 + vBpos) + (1 - pB) * vBneg
+
+
+        if qvalueA > qvalueB:       r = 0, qvalueA
+        elif qvalueA < qvalueB:     r = 1, qvalueB
+        else:                       r = bernoulli(0.5), qvalueA
+        
+        # cache the result
+        self.cache[state] = r
+        return r
+
+    def choose(self, t):
+        """ Which arm to choose; t is the current time step. Returns arm index """
+        # change 1-based time to 0-based
+        self.cache.clear()
+        return self._lookahead((self.Acountpos, self.Acountneg, self.Bcountpos, self.Bcountneg), t-1, self.lookahead_hor)[0]
+
+    def update(self, arm, outcome):
+        """ Updates the estimate for the arm outcome """
+        if arm == 0:
+            if outcome == 1:
+                self.Acountpos += 1
+            else:
+                self.Acountneg += 1
+        elif arm == 1:
+            if outcome == 1:
+                self.Bcountpos += 1
+            else:
+                self.Bcountneg += 1
+        else:
+            raise RuntimeError("Invalid arm number")
+
 
 ## Compute the mean regret
 
-horizon = 99
-trials = 100
+horizon = 199
+trials = 500
 
 #np.random.seed(0)
 #random.seed(0)
-ucb_regrets = evaluate(UCB, horizon, trials)
+ucb_regrets = evaluate(lambda: UCB(0.4), horizon, trials)
 #np.random.seed(0)
 #random.seed(0)
-vf_regrets = evaluate(ValueFunction, horizon, trials)
-
+vf_regrets = evaluate(lambda: ValueFunctionLookahead(1,0.4), horizon, trials)
 thompson_regrets = evaluate(Thompson, horizon, trials)
 #ola_regrets = evaluate(OptimisticLookAhead, horizon, trials)
 gittins_regrets = evaluate(Gittins, horizon, trials)
 
 
-## Plot the mean regret
+# Plot the mean regret
 plt.figure(num=2, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
 plt.plot(ucb_regrets.mean(0), label='UCB')
 plt.plot(thompson_regrets.mean(0), label='Thompson')
@@ -387,31 +456,6 @@ plt.xlabel('Time step')
 plt.ylabel('Regret')
 plt.grid()
 #plt.savefig('regrets.pdf')
-plt.show()
-
-## Confidence interval
-def calc_confidence_interval(data, confidence=0.95):
-    a = 1.0*np.array(data)
-    n = len(a)
-    m, se = np.mean(a), scipy.stats.sem(a)
-    e = se * sp.stats.t._ppf((1+confidence)/2., n-1)
-    return m, e
-
-ymean = []
-yconf = []
-for t in range(horizon):
-    m, e = calc_confidence_interval(ola_regrets[:, t])
-    ymean.append(m)
-    yconf.append(e)
-
-plt.figure(num=1, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
-plt.errorbar(x=np.arange(0, 100, 1), y=ymean, yerr=yconf)
-plt.legend(loc='upper left')
-plt.xlabel('Horizon')
-plt.ylabel('Regret with cofidence interval')
-plt.title("Confidence interval on the mean regret of optimistic lookahead")
-plt.grid()
-plt.savefig('confidence_interval.pdf')
 plt.show()
 
 ## Compute regret as a function of delta (difference between the two arms)
