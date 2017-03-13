@@ -40,6 +40,117 @@ fun executeStochasticAlgorithm(world: Simulator, simulator: Simulator, configura
     return rewards
 }
 
+fun parseUcbValueFunction(path: String): HashMap<Triple<Int, Int, Int>, Double> {
+    val ucbValues = hashMapOf<Triple<Int, Int, Int>, Double>()
+    val input = Unit::class.java.classLoader.getResourceAsStream(path) ?: throw RuntimeException("Resource not found")
+    input.reader().readLines()
+            .drop(1) // The first line contains the headers
+            .map { it.split(",") }
+            .filter { it.size == 4 }
+            .forEach { ucbValues[Triple(it[0].toInt(), it[1].toInt(), it[2].toInt())] = it[3].toDouble() }
+
+    return ucbValues
+}
+
+val UCB_INDICES = parseUcbValueFunction("ucb_value.csv")
+
+fun ucbIndex(state: BeliefState, configuration: Configuration, random: Random): Int {
+    // Acquire parameters
+    val lookahead = min(configuration[LOOKAHEAD] as Int, configuration.horizon)
+    val remainingSteps = configuration.horizon - state.totalSteps() - lookahead
+    val discountFactor = configuration[DISCOUNT] as Double
+    val betaSampleCount = configuration[BETA_SAMPLE_COUNT] as Int
+    val constrainedProbabilities = configuration[CONSTRAINED_PROBABILITIES] as Boolean
+
+    val discountedRemainingSteps = discountFactor * (1 - (discountFactor pow remainingSteps)) / (1 - discountFactor)
+
+    fun calculateUtility(state: BeliefState): Double {
+        val ucbValue = state.arms.sumByDouble { UCB_INDICES[Triple(state.totalSteps(), state.alphas[it], state.betas[it])]!! }
+        state.utility = ucbValue
+        return ucbValue * discountedRemainingSteps
+    }
+
+    // Pick the arm with the best Q
+    return state.successors().maxBy {
+        val successUtility = calculateUtility(it.first.state)
+        val failUtility = calculateUtility(it.second.state)
+
+        val action = it.first.action
+        val actionIndicator = DoubleArray(it.first.state.size) { if (it == action) 1.0 else 0.0 }
+        val probability = sampleBetaValue(state, betaSampleCount, constrainedProbabilities, actionIndicator)
+
+//        val probability = state.actionMean(it.first.action)
+        val utility = probability * (configuration.rewards[it.first.action] + successUtility) + (1 - probability) * failUtility
+        utility
+    }!!.first.action
+}
+
+fun ucbLookahead(state: BeliefState, configuration: Configuration, random: Random): Int {
+    // Acquire parameters
+    val lookahead = min(configuration[LOOKAHEAD] as Int, configuration.horizon)
+    val remainingSteps = configuration.horizon - state.totalSteps() - lookahead
+    val discountFactor = configuration[DISCOUNT] as Double
+    val betaSampleCount = configuration[BETA_SAMPLE_COUNT] as Int
+    val constrainedProbabilities = configuration[CONSTRAINED_PROBABILITIES] as Boolean
+
+    val discountedRemainingSteps = discountFactor * (1 - (discountFactor pow remainingSteps)) / (1 - discountFactor)
+
+    val exploredStates = hashMapOf<BeliefState, BeliefState>()
+
+    // Explore utilities using depth-first search
+    fun lookahead(state: BeliefState, currentDepth: Int, maximumDepth: Int): Double {
+        return if (currentDepth >= maximumDepth) {
+            exploredStates[state] = state
+            val ucbValue = state.arms.sumByDouble { UCB_INDICES[Triple(state.totalSteps(), state.alphas[it], state.betas[it])]!! }
+            state.utility = ucbValue
+            ucbValue * discountedRemainingSteps
+        } else {
+            state.successors().map {
+                // Reuse the utility if already calculated
+                fun calculateUtility(state: BeliefState): Double {
+                    exploredStates[state] = state
+                    val utility = lookahead(state, currentDepth + 1, maximumDepth)
+                    state.utility = utility
+                    return utility
+                }
+
+                val successState = it.first.state
+                val successUtility = exploredStates[successState]?.utility ?: calculateUtility(successState)
+
+                val failState = it.second.state
+                val failUtility = exploredStates[failState]?.utility ?: calculateUtility(failState)
+
+//                val probability = state.actionMean(it.first.action)
+
+                val action = it.first.action
+                val actionIndicator = DoubleArray(it.first.state.size) { if (it == action) 1.0 else 0.0 }
+                val probability = sampleBetaValue(state, betaSampleCount, constrainedProbabilities, actionIndicator)
+
+
+                // Multiply the utility by the probability of getting to the state
+                val utility = probability * (configuration.rewards[it.first.action] + successUtility) + (1 - probability) * failUtility
+                utility
+            }.max()!!
+            // The value of a state equals to its best arm (Q)
+        }
+    }
+
+    // Populate the utilities
+    lookahead(state, 0, lookahead)
+
+    // Pick the arm with the best Q
+    return state.successors().maxBy {
+        val successUtility = exploredStates[it.first.state]!!.utility
+        val failUtility = exploredStates[it.second.state]!!.utility
+//        val probability = state.actionMean(it.first.action)
+        val action = it.first.action
+        val actionIndicator = DoubleArray(it.first.state.size) { if (it == action) 1.0 else 0.0 }
+        val probability = sampleBetaValue(state, betaSampleCount, constrainedProbabilities, actionIndicator)
+        val utility = probability * (configuration.rewards[it.first.action] + successUtility) + (1 - probability) * failUtility
+        utility
+    }!!.first.action
+}
+
 fun optimisticLookahead(state: BeliefState, configuration: Configuration, random: Random): Int {
     // Acquire parameters
     val lookahead = min(configuration[LOOKAHEAD] as Int, configuration.horizon)
@@ -72,9 +183,11 @@ fun optimisticLookahead(state: BeliefState, configuration: Configuration, random
                 val failState = it.second.state
                 val failUtility = exploredStates[failState]?.utility ?: calculateUtility(failState)
 
-                val probability = state.actionMean(it.first.action)
-//                val probability = sampleBetaValue(state, betaSampleCount, constrainedProbabilities, configuration.rewards)
+//                val probability = state.actionMean(it.first.action)
 
+                val action = it.first.action
+                val actionIndicator = DoubleArray(it.first.state.size) { if (it == action) 1.0 else 0.0 }
+                val probability = sampleBetaValue(state, betaSampleCount, constrainedProbabilities, actionIndicator)
 
                 // Multiply the utility by the probability of getting to the state
                 val utility = probability * (configuration.rewards[it.first.action] + successUtility) + (1 - probability) * failUtility

@@ -23,16 +23,15 @@ fun main(args: Array<String>) {
 
     // Main configuration
     val configuration = Configuration(
-            arms = 3,
-            rewards = doubleArrayOf(0.2, 0.3, 0.4),
-            horizon = 100,
-            experimentProbabilities = generateConstrainedProbabilities(resolution = 10, count = 3),
-            //            experimentProbabilities = listOf(doubleArrayOf(0.9, 0.5, 0.1)),
-            iterations = 5)
+            arms = 2,
+            rewards = doubleArrayOf(1.0, 1.0, 1.0),
+            horizon = 90,
+            experimentProbabilities = generateUniformProbabilities(resolution = 10, count = 2),
+//                        experimentProbabilities = listOf(doubleArrayOf(0.9, 0.5, 0.1)),
+            iterations = 8  )
 
-    configuration[BETA_SAMPLE_COUNT] = 300
-    configuration[DISCOUNT] = 0.95
-    configuration[CONSTRAINED_PROBABILITIES] = false
+    configuration[BETA_SAMPLE_COUNT] = 100
+    configuration[DISCOUNT] = 1.0
 
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
 
@@ -59,33 +58,23 @@ fun main(args: Array<String>) {
 //    executeAlgorithm2("Optimistic - l1 b1000", ::evaluateStochasticAlgorithm, ::optimisticLookahead, results, configuration)
 //
 //
+    configuration[CONSTRAINED_PROBABILITIES] = false
 //    configuration[LOOKAHEAD] = 1
-//    executeAlgorithm2("Optimistic - l${configuration[LOOKAHEAD]} b${configuration[BETA_SAMPLE_COUNT]}", ::evaluateStochasticAlgorithm, ::optimisticLookahead, results, configuration)
+//    executeAlgorithm2("UCB-Index - l${configuration[LOOKAHEAD]} b${configuration[BETA_SAMPLE_COUNT]}", ::evaluateStochasticAlgorithm, ::ucbLookahead, results, configuration)
+//    configuration[LOOKAHEAD] = 2
+//    executeAlgorithm2("UCB-Index - l${configuration[LOOKAHEAD]} b${configuration[BETA_SAMPLE_COUNT]}", ::evaluateStochasticAlgorithm, ::ucbLookahead, results, configuration)
 
-    configuration[CONSTRAINED_PROBABILITIES] = true
     configuration[LOOKAHEAD] = 1
-    executeAlgorithm2("Optimistic - l${configuration[LOOKAHEAD]} b${configuration[BETA_SAMPLE_COUNT]} constrained", ::evaluateStochasticAlgorithm, ::optimisticLookahead, results, configuration)
+    executeAlgorithm2("UCB Direct - l${configuration[LOOKAHEAD]}", ::evaluateStochasticAlgorithm, ::ucbIndex, results, configuration)
 
-//    configuration[LOOKAHEAD] = 3
-//    executeAlgorithm2("Optimistic - l3 b${configuration[BETA_SAMPLE_COUNT]} constrained", ::evaluateStochasticAlgorithm, ::optimisticLookahead, results, configuration)
+    configuration[LOOKAHEAD] = 1
+    configuration[DISCOUNT] = 0.0
+    executeAlgorithm2("UCB-Index-d0 - l${configuration[LOOKAHEAD]} b${configuration[BETA_SAMPLE_COUNT]}", ::evaluateStochasticAlgorithm, ::ucbLookahead, results, configuration)
 
-//    configuration[BETA_SAMPLE_COUNT] = 50
+//    configuration[CONSTRAINED_PROBABILITIES] = true
+    configuration[LOOKAHEAD] = 1
+    executeAlgorithm2("UCB Direct-d0 - l${configuration[LOOKAHEAD]}", ::evaluateStochasticAlgorithm, ::ucbIndex, results, configuration)
 
-//    configuration[LOOKAHEAD] = 2
-//    executeAlgorithm2("Optimistic - l2 b50", ::evaluateStochasticAlgorithm, ::optimisticLookahead, results, configuration)
-//
-//
-//    configuration[BETA_SAMPLE_COUNT] = 200
-//
-//    configuration[LOOKAHEAD] = 2
-//    executeAlgorithm2("Optimistic - l2 b200", ::evaluateStochasticAlgorithm, ::optimisticLookahead, results, configuration)
-//
-//
-//    configuration[DISCOUNT] = 0.5
-//    configuration[LOOKAHEAD] = 2
-//    executeAlgorithm2("Optimistic - l2 b200 df0.5", ::evaluateStochasticAlgorithm, ::optimisticLookahead, results, configuration)
-//
-//
 //    configuration[DISCOUNT] = 1.0
 //    configuration[LOOKAHEAD] = 2
 //    executeAlgorithm2("Optimistic - l2 b200 df1", ::evaluateStochasticAlgorithm, ::optimisticLookahead, results, configuration)
