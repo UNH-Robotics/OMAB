@@ -68,8 +68,6 @@ int main(){
     const size_t state_count = states.size();
     cout << "Number of states: " << state_count << endl;
 
-    //cout << "States:" << endl << states << endl;
-
     // state map
     std::cout << "Constructing state map ..." << endl;
     map<state_t, int> state2index;
@@ -105,7 +103,7 @@ int main(){
     for(size_t ilambda=0; ilambda < lambda_count; ilambda++){
         // iterate over states backwards (dynamic programming)
         // state of the uncertain arm
-        for(int istate=state_count-1; istate >= 0; istate--){
+        for(long istate=state_count-1; istate >= 0; istate--){
             auto state = states[istate];
             auto nextstates = transition(state);
             pair<state_t, double>

@@ -3,14 +3,11 @@ package edu.unh.cs.ai.omab.domain
 import edu.unh.cs.ai.omab.utils.maxIndexAfter
 import edu.unh.cs.ai.omab.utils.minIndexBefore
 import edu.unh.cs.ai.omab.utils.smallerIndicesBefore
-import lpsolve.LpSolve
-import lpsolve.LpSolveException
 import java.util.*
 
 /**
  * @author Bence Cserna (bence@cserna.net)
  */
-
 data class BeliefState(val alphas: IntArray, val betas: IntArray) {
     var utility = 1000.0
 
@@ -21,6 +18,9 @@ data class BeliefState(val alphas: IntArray, val betas: IntArray) {
 
     val size: Int
         get() = alphas.size
+
+    val arms
+        get() = alphas.indices
 
     override fun hashCode(): Int {
         var hashCode = 0
@@ -182,37 +182,6 @@ data class BeliefState(val alphas: IntArray, val betas: IntArray) {
 //        throw RuntimeException("Consistent state is not reachable")
 //    }
 
-    fun augmentAsLP(): BeliefState {
-        try {
-            // Create a problem with 4 variables and 0 constraints
-            val solver = LpSolve.makeLp(0, 4)
-
-            // add constraints
-            solver.strAddConstraint("3 2 2 1", LpSolve.LE, 4.0)
-            solver.strAddConstraint("0 4 3 1", LpSolve.GE, 3.0)
-
-
-            // set objective function
-            solver.strSetObjFn("2 3 -2 3")
-
-            // solve the problem
-            solver.solve()
-
-            // print solution
-            System.out.println("Value of objective function: " + solver.getObjective())
-            val `var` = solver.getPtrVariables()
-            for (i in `var`.indices) {
-                println("Value of var[" + i + "] = " + `var`[i])
-            }
-
-            // delete the problem and free memory
-            solver.deleteLp()
-        } catch (e: LpSolveException) {
-            e.printStackTrace()
-        }
-
-        TODO()
-    }
 }
 
 class MDP(depth: Int? = null, val numberOfActions: Int) {

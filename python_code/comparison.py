@@ -2,9 +2,11 @@
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy as sp
+import scipy.stats
 from math import sqrt, log
-from random import random
 import tqdm
+import random
 
 matplotlib.rcParams['ps.useafm'] = True
 matplotlib.rcParams['pdf.use14corefonts'] = True
@@ -15,11 +17,10 @@ matplotlib.rcParams['text.usetex'] = True
 
 def bernoulli(p):
     """ Sample from Bernoulli distribution """
-    if random() <= p:
+    if random.random() <= p:
         return 1
     else:
         return 0
-
 
 ## Evaluation method
 
@@ -85,8 +86,7 @@ def evaluate(method, horizon, runs):
 
 class OptimisticLookAhead:
     """
-    Optimistic Look Ahead based on OGI paper by Gutin & Farias
-    This is a trial implementation right now which is not necessarily correct
+    Optimistic Look Ahead inspired on OGI paper by Gutin & Farias
     """
 
     def __init__(self):
@@ -103,7 +103,7 @@ class OptimisticLookAhead:
         tRemain = horizon - ((self.Acountpos + self.Acountneg + self.Bcountpos + self.Bcountneg) - 4)
 
         # TODO: WE NEED TO EXPLAIN THIS!!!
-        discount = 0.8
+        discount = 0.9 if self.betasamplecount>=100 else np.log2(self.betasamplecount)/10
         tRemain = (1 - discount ** tRemain) / (1 - discount)
 
         v01 = np.mean(
@@ -130,11 +130,6 @@ class OptimisticLookAhead:
         pB = self.Bcountpos / (self.Bcountpos + self.Bcountneg)
         valueB = pB * (1 + v11) + (1 - pB) * v12
 
-        # print(v01,v02,v11,v12)
-        # print(pA, pB)
-        # print(self.Acountpos, self.Acountneg, valueA, self.Bcountpos, self.Bcountneg, valueB)
-        # print('-----')
-
         if valueA > valueB:
             return 0
         else:
@@ -154,102 +149,6 @@ class OptimisticLookAhead:
                 self.Bcountneg += 1
         else:
             raise RuntimeError("Invalid arm number")
-
-
-horizon = 100
-trials = 10
-
-ola_regrets = evaluate(OptimisticLookAhead, horizon, trials)
-
-plt.plot(ola_regrets.mean(0), label='OptimisticLookahed')
-plt.legend(loc='upper left')
-plt.xlabel('Time step')
-plt.ylabel('Regret')
-plt.grid()
-plt.savefig('regrets.pdf')
-plt.show()
-
-
-## Simple methods            
-
-class UCB:
-    """
-    Upper confidence bound. Note the randomization on ties. This is
-    just to make the method independent of the order of arms and the sensitivity
-    with respect to the initialization.
-    """
-
-    def __init__(self, alpha=2.0):
-        self.Amean = 0
-        self.Bmean = 0
-        self.Acount = 1
-        self.Bcount = 1
-        self.alpha = alpha
-
-    def choose(self, t):
-        """ Which arm to choose; t is the current time step. Returns arm index """
-        
-        valA = self.Amean + sqrt((self.alpha * log(t)) / (2 * self.Acount))
-        valB = self.Bmean + sqrt((self.alpha * log(t)) / (2 * self.Bcount))
-        # the UCB choice
-        if valA > valB:
-            #print(t, 0, valA, valB)
-            return 0
-        elif valA < valB:
-            #print(t,1, valA, valB)
-            return 1
-        else:
-            #print(t, 0.5, valA, valB)
-            return bernoulli(0.5)
-
-    def update(self, arm, outcome):
-        """ Updates the estimate for the arm outcome """
-        if arm == 0:
-            self.Amean = (self.Amean * self.Acount + outcome) / (self.Acount + 1)
-            self.Acount += 1
-        elif arm == 1:
-            self.Bmean = (self.Bmean * self.Bcount + outcome) / (self.Bcount + 1)
-            self.Bcount += 1
-        else:
-            raise RuntimeError("Invalid arm number")
-
-
-class Thompson:
-    """
-    Thompson sampling
-    """
-
-    def __init__(self):
-        # initialize prior values
-        self.Acountpos = 1
-        self.Acountneg = 1
-        self.Bcountpos = 1
-        self.Bcountneg = 1
-
-    def choose(self, t):
-        """ Which arm to choose; t is the current time step. Returns arm index """
-        pA = np.random.beta(self.Acountpos, self.Acountneg)
-        pB = np.random.beta(self.Bcountpos, self.Bcountneg)
-        if pA > pB:
-            return 0
-        else:
-            return 1
-
-    def update(self, arm, outcome):
-        """ Updates the estimate for the arm outcome """
-        if arm == 0:
-            if outcome == 1:
-                self.Acountpos += 1
-            else:
-                self.Acountneg += 1
-        elif arm == 1:
-            if outcome == 1:
-                self.Bcountpos += 1
-            else:
-                self.Bcountneg += 1
-        else:
-            raise RuntimeError("Invalid arm number")
-
 
 ## Gittins index
 
@@ -303,27 +202,216 @@ class Gittins:
             raise RuntimeError("Invalid arm number")
 
 
+## Simple methods            
+
+class UCB:
+    """
+    Upper confidence bound. Note the randomization on ties. This is
+    just to make the method independent of the order of arms and the sensitivity
+    with respect to the initialization.
+    """
+
+    def __init__(self, alpha=2.0):
+        self.Amean = 0.5
+        self.Bmean = 0.5
+        self.Acount = 1
+        self.Bcount = 1
+        self.alpha = alpha
+
+    def choose(self, t):
+        """ Which arm to choose; t is the current time step. Returns arm index """
+        
+        valA = self.Amean + sqrt((self.alpha * log(t)) / (2 * self.Acount))
+        valB = self.Bmean + sqrt((self.alpha * log(t)) / (2 * self.Bcount))
+        
+        #if(t < 10):
+        #    print('UCB', valA, valB)
+        
+        if valA > valB:
+            return 0
+        elif valA < valB:
+            return 1
+        else:
+            return bernoulli(0.5)
+
+    def update(self, arm, outcome):
+        """ Updates the estimate for the arm outcome """
+        if arm == 0:
+            self.Amean = (self.Amean * self.Acount + outcome) / (self.Acount + 1)
+            self.Acount += 1
+        elif arm == 1:
+            self.Bmean = (self.Bmean * self.Bcount + outcome) / (self.Bcount + 1)
+            self.Bcount += 1
+        else:
+            raise RuntimeError("Invalid arm number")
+
+
+class Thompson:
+    """
+    Thompson sampling
+    """
+
+    def __init__(self):
+        # initialize prior values
+        self.Acountpos = 1
+        self.Acountneg = 1
+        self.Bcountpos = 1
+        self.Bcountneg = 1
+
+    def choose(self, t):
+        """ Which arm to choose; t is the current time step. Returns arm index """
+        pA = np.random.beta(self.Acountpos, self.Acountneg)
+        pB = np.random.beta(self.Bcountpos, self.Bcountneg)
+        if pA > pB:
+            return 0
+        else:
+            return 1
+
+    def update(self, arm, outcome):
+        """ Updates the estimate for the arm outcome """
+        if arm == 0:
+            if outcome == 1:
+                self.Acountpos += 1
+            else:
+                self.Acountneg += 1
+        elif arm == 1:
+            if outcome == 1:
+                self.Bcountpos += 1
+            else:
+                self.Bcountneg += 1
+        else:
+            raise RuntimeError("Invalid arm number")
+
+
+## Lookead value function
+
+valuefunction = {}
+import pandas as pa
+
+valuefunction_csv = pa.read_csv('valuecomputation/ucb_value.csv')
+for (t, p, n, v) in zip(valuefunction_csv.Time, valuefunction_csv.Positive, valuefunction_csv.Negative, valuefunction_csv.Value):
+    valuefunction[(t,p,n)] = v
+
+
+class ValueFunction:
+    """
+    Use one-step lookahead with a *linearly separable* value function which
+    is precomputed for eacha arm separately
+    """
+
+    def __init__(self):
+        # initialize prior values
+        self.Acountpos = 1;
+        self.Acountneg = 1;
+        self.Bcountpos = 1;
+        self.Bcountneg = 1;
+
+    def choose(self, t):
+        """ Which arm to choose; t is the current time step. Returns arm index """
+
+        # the pre-computed value function is 0-based! (t=0 is the first time step)
+        vApos = valuefunction[(t,self.Acountpos+1,self.Acountneg)] + \
+                    valuefunction[(t,self.Bcountpos,self.Bcountneg)]
+        vAneg = valuefunction[(t,self.Acountpos,self.Acountneg+1)]  + \
+                    valuefunction[(t,self.Bcountpos,self.Bcountneg)]  
+        vBpos = valuefunction[(t,self.Bcountpos+1,self.Bcountneg)] + \
+                    valuefunction[(t,self.Acountpos,self.Acountneg)]
+        vBneg = valuefunction[(t,self.Bcountpos,self.Bcountneg+1)] + \
+                    valuefunction[(t,self.Acountpos,self.Acountneg)]
+
+        pA = self.Acountpos / (self.Acountpos + self.Acountneg)
+        qvalueA = pA * (1 + vApos) + (1 - pA) * vAneg
+        
+        pB = self.Bcountpos / (self.Bcountpos + self.Bcountneg)
+        qvalueB = pB * (1 + vBpos) + (1 - pB) * vBneg
+
+        # adjust value function by subtracting the value of no-action
+        qvalueA -= valuefunction[(t,self.Acountpos,self.Acountneg)] + \
+                    valuefunction[(t,self.Bcountpos,self.Bcountneg)]
+        
+        qvalueB -= valuefunction[(t,self.Acountpos,self.Acountneg)] + \
+                    valuefunction[(t,self.Bcountpos,self.Bcountneg)]
+        #if(t < 10):
+        #    print('VFA', qvalueA, qvalueB)
+
+        if qvalueA > qvalueB:
+            return 0
+        elif qvalueA < qvalueB:
+            return 1
+        else:
+            return bernoulli(0.5)
+
+    def update(self, arm, outcome):
+        """ Updates the estimate for the arm outcome """
+        if arm == 0:
+            if outcome == 1:
+                self.Acountpos += 1
+            else:
+                self.Acountneg += 1
+        elif arm == 1:
+            if outcome == 1:
+                self.Bcountpos += 1
+            else:
+                self.Bcountneg += 1
+        else:
+            raise RuntimeError("Invalid arm number")
+
+
+
 ## Compute the mean regret
 
-horizon = 100
-trials = 50
+horizon = 99
+trials = 100
 
+#np.random.seed(0)
+#random.seed(0)
 ucb_regrets = evaluate(UCB, horizon, trials)
+#np.random.seed(0)
+#random.seed(0)
+vf_regrets = evaluate(ValueFunction, horizon, trials)
+
 thompson_regrets = evaluate(Thompson, horizon, trials)
-ola_regrets = evaluate(OptimisticLookAhead, horizon, trials)
+#ola_regrets = evaluate(OptimisticLookAhead, horizon, trials)
 gittins_regrets = evaluate(Gittins, horizon, trials)
 
-## Plot the mean regret
 
+## Plot the mean regret
+plt.figure(num=2, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
 plt.plot(ucb_regrets.mean(0), label='UCB')
 plt.plot(thompson_regrets.mean(0), label='Thompson')
-plt.plot(ola_regrets.mean(0), label='OptimisticLookahead')
+#plt.plot(ola_regrets.mean(0), label='OptimisticLookahead')
+plt.plot(vf_regrets.mean(0), '--', label='ValueFunction')
 plt.plot(gittins_regrets.mean(0), label='Gittins')
 plt.legend(loc='upper left')
 plt.xlabel('Time step')
 plt.ylabel('Regret')
 plt.grid()
-plt.savefig('regrets.pdf')
+#plt.savefig('regrets.pdf')
+plt.show()
+
+## Confidence interval
+def calc_confidence_interval(data, confidence=0.95):
+    a = 1.0*np.array(data)
+    n = len(a)
+    m, se = np.mean(a), scipy.stats.sem(a)
+    e = se * sp.stats.t._ppf((1+confidence)/2., n-1)
+    return m, e
+
+ymean = []
+yconf = []
+for t in range(horizon):
+    m, e = calc_confidence_interval(ola_regrets[:, t])
+    ymean.append(m)
+    yconf.append(e)
+
+plt.figure(num=1, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
+plt.errorbar(x=np.arange(0, 100, 1), y=ymean, yerr=yconf)
+plt.legend(loc='upper left')
+plt.xlabel('Horizon')
+plt.ylabel('Regret with cofidence interval')
+plt.title("Confidence interval on the mean regret of optimistic lookahead")
+plt.grid()
+plt.savefig('confidence_interval.pdf')
 plt.show()
 
 ## Compute regret as a function of delta (difference between the two arms)
