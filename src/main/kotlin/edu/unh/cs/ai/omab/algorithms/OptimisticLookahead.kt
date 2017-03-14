@@ -57,17 +57,14 @@ val UCB_INDICES = parseUcbValueFunction("ucb_value.csv")
 fun ucbIndex(state: BeliefState, configuration: Configuration, random: Random): Int {
     // Acquire parameters
     val lookahead = min(configuration[LOOKAHEAD] as Int, configuration.horizon)
-    val remainingSteps = configuration.horizon - state.totalSteps() - lookahead
     val discountFactor = configuration[DISCOUNT] as Double
     val betaSampleCount = configuration[BETA_SAMPLE_COUNT] as Int
     val constrainedProbabilities = configuration[CONSTRAINED_PROBABILITIES] as Boolean
 
-    val discountedRemainingSteps = discountFactor * (1 - (discountFactor pow remainingSteps)) / (1 - discountFactor)
-
     fun calculateUtility(state: BeliefState): Double {
         val ucbValue = state.arms.sumByDouble { UCB_INDICES[Triple(state.totalSteps(), state.alphas[it], state.betas[it])]!! }
         state.utility = ucbValue
-        return ucbValue * discountedRemainingSteps
+        return ucbValue * discountFactor
     }
 
     // Pick the arm with the best Q
@@ -79,7 +76,6 @@ fun ucbIndex(state: BeliefState, configuration: Configuration, random: Random): 
         val actionIndicator = DoubleArray(it.first.state.size) { if (it == action) 1.0 else 0.0 }
         val probability = sampleBetaValue(state, betaSampleCount, constrainedProbabilities, actionIndicator)
 
-//        val probability = state.actionMean(it.first.action)
         val utility = probability * (configuration.rewards[it.first.action] + successUtility) + (1 - probability) * failUtility
         utility
     }!!.first.action
@@ -88,12 +84,9 @@ fun ucbIndex(state: BeliefState, configuration: Configuration, random: Random): 
 fun ucbLookahead(state: BeliefState, configuration: Configuration, random: Random): Int {
     // Acquire parameters
     val lookahead = min(configuration[LOOKAHEAD] as Int, configuration.horizon)
-    val remainingSteps = configuration.horizon - state.totalSteps() - lookahead
     val discountFactor = configuration[DISCOUNT] as Double
     val betaSampleCount = configuration[BETA_SAMPLE_COUNT] as Int
     val constrainedProbabilities = configuration[CONSTRAINED_PROBABILITIES] as Boolean
-
-    val discountedRemainingSteps = discountFactor * (1 - (discountFactor pow remainingSteps)) / (1 - discountFactor)
 
     val exploredStates = hashMapOf<BeliefState, BeliefState>()
 
@@ -103,7 +96,7 @@ fun ucbLookahead(state: BeliefState, configuration: Configuration, random: Rando
             exploredStates[state] = state
             val ucbValue = state.arms.sumByDouble { UCB_INDICES[Triple(state.totalSteps(), state.alphas[it], state.betas[it])]!! }
             state.utility = ucbValue
-            ucbValue * discountedRemainingSteps
+            return ucbValue * discountFactor
         } else {
             state.successors().map {
                 // Reuse the utility if already calculated
@@ -142,10 +135,11 @@ fun ucbLookahead(state: BeliefState, configuration: Configuration, random: Rando
     return state.successors().maxBy {
         val successUtility = exploredStates[it.first.state]!!.utility
         val failUtility = exploredStates[it.second.state]!!.utility
-//        val probability = state.actionMean(it.first.action)
+
         val action = it.first.action
         val actionIndicator = DoubleArray(it.first.state.size) { if (it == action) 1.0 else 0.0 }
         val probability = sampleBetaValue(state, betaSampleCount, constrainedProbabilities, actionIndicator)
+
         val utility = probability * (configuration.rewards[it.first.action] + successUtility) + (1 - probability) * failUtility
         utility
     }!!.first.action
@@ -183,8 +177,6 @@ fun optimisticLookahead(state: BeliefState, configuration: Configuration, random
                 val failState = it.second.state
                 val failUtility = exploredStates[failState]?.utility ?: calculateUtility(failState)
 
-//                val probability = state.actionMean(it.first.action)
-
                 val action = it.first.action
                 val actionIndicator = DoubleArray(it.first.state.size) { if (it == action) 1.0 else 0.0 }
                 val probability = sampleBetaValue(state, betaSampleCount, constrainedProbabilities, actionIndicator)
@@ -204,7 +196,11 @@ fun optimisticLookahead(state: BeliefState, configuration: Configuration, random
     return state.successors().maxBy {
         val successUtility = exploredStates[it.first.state]!!.utility
         val failUtility = exploredStates[it.second.state]!!.utility
-        val probability = state.actionMean(it.first.action)
+
+        val action = it.first.action
+        val actionIndicator = DoubleArray(it.first.state.size) { if (it == action) 1.0 else 0.0 }
+        val probability = sampleBetaValue(state, betaSampleCount, constrainedProbabilities, actionIndicator)
+
         val utility = probability * (configuration.rewards[it.first.action] + successUtility) + (1 - probability) * failUtility
         utility
     }!!.first.action
