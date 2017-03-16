@@ -1,87 +1,244 @@
 #!/bin/python
-import matplotlib
-import matplotlib.pyplot as plt
-import numpy as np
-import scipy as sp
-import scipy.stats
-from math import sqrt, log
-import tqdm
-import random
-
-matplotlib.rcParams['ps.useafm'] = True
-matplotlib.rcParams['pdf.use14corefonts'] = True
-matplotlib.rcParams['text.usetex'] = True
+from basics import *
 
 
-## Helper methods
-
-def bernoulli(p):
-    """ Sample from Bernoulli distribution """
-    if random.random() <= p:
-        return 1
-    else:
-        return 0
-
-## Evaluation method
+## Lookead value function
 
 
-def evaluate(method, horizon, runs):
+import pandas as pa
+
+ucb_valuefunction = {}
+valuefunction_csv = pa.read_csv('valuecomputation/ucb_value.csv')
+for (t, p, n, v) in zip(valuefunction_csv.Time, valuefunction_csv.Positive, valuefunction_csv.Negative, valuefunction_csv.Value):
+    ucb_valuefunction[(t,p,n)] = v
+
+gittins_valuefunction = {}
+valuefunction_csv = pa.read_csv('valuecomputation/gittins_value.csv')
+for (t, p, n, v) in zip(valuefunction_csv.Time, valuefunction_csv.Positive, valuefunction_csv.Negative, valuefunction_csv.Value):
+    gittins_valuefunction[(t,p,n)] = v
+
+
+class ValueFunction:
     """
-    Evaluates the multi-armed bandit method
-    
-    Parameters
-    ----------
-    method : class or constructor
-        A class with choose and update methods
-    horizon : int
-        Horizon length
-    runs : int, or list of tuples
-        Configurations of bandits to run. 
-        If it is an integer, then bandits are generated randomply according to 
-        the uniform beta distribution.
-        If it is a list of tuples, then each item is treated as a configuration
-        for the two arms.
+    Use one-step lookahead with a *linearly separable* value function which
+    is precomputed for each arm separately
+    valuefunction : the value function to be used in the lookahead
+    """
+
+    def __init__(self, valuefunction):
+        # initialize prior values
+        self.Acountpos = 1;
+        self.Acountneg = 1;
+        self.Bcountpos = 1;
+        self.Bcountneg = 1;
+        self.valuefunction = valuefunction
+
+    def choose(self, t):
+        """ Which arm to choose; t is the current time step. Returns arm index """
+
+        # the pre-computed value function is 0-based! (t=0 is the first time step)
+        vApos = self.valuefunction[(t,self.Acountpos+1,self.Acountneg)] + \
+                    self.valuefunction[(t,self.Bcountpos,self.Bcountneg)]
+        vAneg = self.valuefunction[(t,self.Acountpos,self.Acountneg+1)]  + \
+                    self.valuefunction[(t,self.Bcountpos,self.Bcountneg)]  
+        vBpos = self.valuefunction[(t,self.Bcountpos+1,self.Bcountneg)] + \
+                    self.valuefunction[(t,self.Acountpos,self.Acountneg)]
+        vBneg = self.valuefunction[(t,self.Bcountpos,self.Bcountneg+1)] + \
+                    self.valuefunction[(t,self.Acountpos,self.Acountneg)]
+
+        pA = self.Acountpos / (self.Acountpos + self.Acountneg)
+        qvalueA = pA * (1 + vApos) + (1 - pA) * vAneg
         
-    Returns
-    -------
-    out : ndarray, matrix
-        Each row is a single run and the entries are the cumulative regrets
-        up to that point. Note that even this is a single run, the rewards used in 
-        computing the regret are the expected values and not the actual realizations
+        pB = self.Bcountpos / (self.Bcountpos + self.Bcountneg)
+        qvalueB = pB * (1 + vBpos) + (1 - pB) * vBneg
+
+        # adjust value function by subtracting the value of no-action
+        #qvalueA -= self.valuefunction[(t,self.Acountpos,self.Acountneg)] + \
+        #            self.valuefunction[(t,self.Bcountpos,self.Bcountneg)]
+        #
+        #qvalueB -= self.valuefunction[(t,self.Acountpos,self.Acountneg)] + \
+        #            self.valuefunction[(t,self.Bcountpos,self.Bcountneg)]
+                    
+        if qvalueA > qvalueB:       return 0
+        elif qvalueA < qvalueB:     return 1
+        else:                       return bernoulli(0.5)
+
+    def update(self, arm, outcome):
+        """ Updates the estimate for the arm outcome """
+        if arm == 0:
+            if outcome == 1:    self.Acountpos += 1
+            else:               self.Acountneg += 1
+        elif arm == 1:
+            if outcome == 1:    self.Bcountpos += 1
+            else:               self.Bcountneg += 1
+        else: raise RuntimeError("Invalid arm number")
+
+
+class ValueFunctionLookahead:
     """
+    Use multi-step lookahead with a *linearly separable* value function which
+    is precomputed for each arm separately
+    valuefunction : the value function to be used in the lookahead
+    """
+    def __init__(self, valuefunction, lookahead_hor = 1, scale = 1.0):
+        # initialize prior values
+        self.Acountpos = 1
+        self.Acountneg = 1
+        self.Bcountpos = 1
+        self.Bcountneg = 1
+        self.lookahead_hor = lookahead_hor
+        self.valuefunction = valuefunction
+        self.cache = {}
+        self.scale = scale
 
-    if type(runs) == int:
-        runs = (None,) * runs
+    def _lookahead(self, state, t, steps_left):
+        """ Recursive and dumb lookahead 
+            The order of elements in state is:
+                Acountpos, Acountneg, Bcountpos, Bcountneg 
+            Returns: action, value function
+        """
+        
+        # terminate if this is the last step
+        if steps_left == 0:
+            return -1, self.scale * (self.valuefunction[(t, state[0], state[1])] + \
+                                     self.valuefunction[(t, state[2], state[3])])
 
-    regrets = - np.ones((len(runs), horizon))
+        # the cache is specific only to the particular run
+        if state in self.cache:
+            return self.cache[state]
+        
+        # the pre-computed value function is 0-based! (t=0 is the first time-step)
+        vApos = self._lookahead((state[0]+1, state[1], state[2], state[3]), t+1, steps_left-1)[1]
+        vAneg = self._lookahead((state[0], state[1]+1, state[2], state[3]), t+1, steps_left-1)[1]
+        vBpos = self._lookahead((state[0], state[1], state[2]+1, state[3]), t+1, steps_left-1)[1]
+        vBneg = self._lookahead((state[0], state[1], state[2], state[3]+1), t+1, steps_left-1)[1]
 
-    for irun, run in enumerate(tqdm.tqdm(runs)):
-        # generate problem 
-        if run is None:
-            pA = np.random.beta(1, 1);
-            pB = np.random.beta(1, 1);
-        else:
-            pA, pB = run
-        maxp = max(pA, pB)
-        # initialize
-        losses = -np.ones(horizon);
-        m = method()
-        # simulate
-        for t in range(horizon):
-            arm = m.choose(t + 1)
-            if arm == 0:
-                p = bernoulli(pA)
-            else:
-                p = bernoulli(pB)
-            # update the algorithm
-            m.update(arm, p)
-            # update the regret (using the expected regret)
-            losses[t] = (maxp - (pA if arm == 0 else pB))
-        regrets[irun, :] = np.cumsum(losses)
-    return regrets
+        pA = state[0] / (state[0] + state[1])
+        qvalueA = pA * (1 + vApos) + (1 - pA) * vAneg
+        
+        pB = state[2] / (state[2] + state[3])
+        qvalueB = pB * (1 + vBpos) + (1 - pB) * vBneg
+
+        if qvalueA > qvalueB:       r = 0, qvalueA
+        elif qvalueA < qvalueB:     r = 1, qvalueB
+        else:                       r = bernoulli(0.5), qvalueA
+        
+        # cache the result
+        self.cache[state] = r
+        return r
+
+    def choose(self, t):
+        """ Which arm to choose; t is the current time step. Returns arm index """
+        # change 1-based time to 0-based
+        self.cache.clear()
+        return self._lookahead((self.Acountpos, self.Acountneg, self.Bcountpos, self.Bcountneg), t-1, self.lookahead_hor)[0]
+
+    def update(self, arm, outcome):
+        """ Updates the estimate for the arm outcome """
+        if arm == 0:
+            if outcome == 1:    self.Acountpos += 1
+            else:               self.Acountneg += 1
+        elif arm == 1:
+            if outcome == 1:    self.Bcountpos += 1
+            else:               self.Bcountneg += 1
+        else: raise RuntimeError("Invalid arm number")
 
 
-## New Methods
+## Compute and compare the mean regret of various methods
+
+horizon = 290
+trials = 2000
+
+ucb_regrets = evaluate(lambda: UCB(2.0), horizon, trials)
+vf_ucb_regrets = evaluate(lambda: ValueFunctionLookahead(ucb_valuefunction, 2), horizon, trials)
+vf_gittins_regrets = evaluate(lambda: ValueFunctionLookahead(gittins_valuefunction,2), horizon, trials)
+thompson_regrets = evaluate(Thompson, horizon, trials)
+gittins_regrets = evaluate(Gittins, horizon, trials)
+
+## Plot the mean regret
+
+plt.figure(num=2, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
+plot_confidence(ucb_regrets, label='UCB')
+plot_confidence(thompson_regrets, label='Thompson')
+plot_confidence(vf_ucb_regrets, '--', label='ValueFunction UCB')
+plot_confidence(vf_gittins_regrets, '--', label='ValueFunction Git')
+plot_confidence(gittins_regrets, label='Gittins')
+plt.legend(loc='upper left')
+plt.xlabel('Time step')
+plt.ylabel('Regret')
+plt.grid()
+plt.savefig('regrets.pdf')
+plt.show()
+
+
+## Compare the regret of solutions with a zero value function
+
+horizon = 200
+trials = 500
+
+gittins_regrets = evaluate(Gittins, horizon, trials)
+np.random.seed(40); random.seed(0);
+vf_regrets1 = evaluate(lambda: ValueFunctionLookaheadStep(1,0.4,0), horizon, trials)
+np.random.seed(40); random.seed(0);
+vf_regretsM = evaluate(lambda: ValueFunctionLookaheadStep(10,0.4,5), horizon, trials)
+
+# Plot the mean regret
+plt.figure(num=2, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
+plt.plot(vf_regrets1.mean(0), '-', label='ValueFunction L1')
+plt.plot(vf_regretsM.mean(0), '--', label='ValueFunction LM')
+plt.plot(gittins_regrets.mean(0), label='Gittins')
+plt.legend(loc='upper left')
+plt.xlabel('Time step')
+plt.ylabel('Regret')
+plt.grid()
+#plt.savefig('regrets.pdf')
+plt.show()
+
+
+## Compute regret as a function of delta (difference between the two arms)
+
+ticks = 30
+repetitions = 500
+
+# init p values
+runs = tuple(
+    (p1, p2) for p1 in np.linspace(0, 1, ticks) for p2 in np.linspace(0, 1, ticks) for r in range(repetitions) if
+    p1 != p2)
+deltas = np.array(tuple(abs(pA - pB) for pA, pB in runs))
+
+ucb_regrets = evaluate(UCB, horizon, runs)
+thompson_regrets = evaluate(Thompson, horizon, runs)
+ola_regrets = evaluate(OptimisticLookAhead, horizon, runs)
+gittins_regrets = evaluate(Gittins, horizon, runs)
+
+## Plot dependence on delta
+
+# average the 
+shrunkdelta = deltas.reshape(-1, repetitions)[:, 0]
+shrunkprobs = np.array([max(p1, p2) for p1, p2 in runs]).reshape(-1, repetitions)[:, 0]
+
+
+def plot_curve(data, pos, name):
+    plt.subplot(1, 4, pos)
+    plt.scatter(shrunkdelta, data[:, -1].reshape(-1, repetitions).mean(1) / (shrunkprobs * horizon) * 100, s=10,
+                c=shrunkprobs, edgecolors='face', cmap=matplotlib.cm.plasma)
+    plt.ylim(-1, 30)
+    plt.xlabel('$\Delta$')
+    plt.ylabel('Mean propotional regret (\%)')
+    plt.title(name)
+    plt.grid()
+
+
+plt.figure(num=None, figsize=(10, 6), dpi=80, facecolor='w', edgecolor='k')
+plot_curve(ucb_regrets, 1, "UCB")
+plot_curve(thompson_regrets, 2, "Thompson")
+plot_curve(ola_regrets, 3, "OptimisticLookahed")
+plot_curve(gittins_regrets, 4, "Gittins")
+
+plt.savefig('proportional_regret.pdf')
+plt.show()
+
+## Optimistic Lookahead (old)
 
 
 class OptimisticLookAhead:
@@ -102,7 +259,6 @@ class OptimisticLookAhead:
 
         tRemain = horizon - ((self.Acountpos + self.Acountneg + self.Bcountpos + self.Bcountneg) - 4)
 
-        # TODO: WE NEED TO EXPLAIN THIS!!!
         discount = 0.9 if self.betasamplecount>=100 else np.log2(self.betasamplecount)/10
         tRemain = (1 - discount ** tRemain) / (1 - discount)
 
@@ -134,283 +290,6 @@ class OptimisticLookAhead:
             return 0
         else:
             return 1
-
-    def update(self, arm, outcome):
-        """ Updates the estimate for the arm outcome """
-        if arm == 0:
-            if outcome == 1:
-                self.Acountpos += 1
-            else:
-                self.Acountneg += 1
-        elif arm == 1:
-            if outcome == 1:
-                self.Bcountpos += 1
-            else:
-                self.Bcountneg += 1
-        else:
-            raise RuntimeError("Invalid arm number")
-
-## Gittins index
-
-# loads the index as a global variable (to avoid reinit in every run)
-gittins = {}
-import pandas as pa
-
-gittins_csv = pa.read_csv('gittins.csv')
-for (p, n, v) in zip(gittins_csv.Positive, gittins_csv.Negative, gittins_csv.Index):
-    gittins[(p, n)] = v
-
-
-class Gittins:
-    """
-    Use Gittins index. Note the randomization when the values are tied. This is
-    just to make the method independent of the order of arms and the sensitivity
-    with respect to the initialization.
-    """
-
-    def __init__(self):
-        # initialize prior values
-        self.Acountpos = 1
-        self.Acountneg = 1
-        self.Bcountpos = 1
-        self.Bcountneg = 1
-
-    def choose(self, t):
-        """ Which arm to choose; t is the current time step. Returns arm index """
-        pA = gittins[(self.Acountpos, self.Acountneg)]
-        pB = gittins[(self.Bcountpos, self.Bcountneg)]
-        if pA > pB:
-            return 0
-        elif pA < pB:
-            return 1
-        else:
-            return bernoulli(0.5)
-
-    def update(self, arm, outcome):
-        """ Updates the estimate for the arm outcome """
-        if arm == 0:
-            if outcome == 1:
-                self.Acountpos += 1
-            else:
-                self.Acountneg += 1
-        elif arm == 1:
-            if outcome == 1:
-                self.Bcountpos += 1
-            else:
-                self.Bcountneg += 1
-        else:
-            raise RuntimeError("Invalid arm number")
-
-
-## Simple methods            
-
-class UCB:
-    """
-    Upper confidence bound. Note the randomization on ties. This is
-    just to make the method independent of the order of arms and the sensitivity
-    with respect to the initialization.
-    """
-
-    def __init__(self, alpha=2.0):
-        self.Amean = 0.5
-        self.Bmean = 0.5
-        self.Acount = 1
-        self.Bcount = 1
-        self.alpha = alpha
-
-    def choose(self, t):
-        """ Which arm to choose; t is the current time step. Returns arm index """
-        
-        valA = self.Amean + sqrt((self.alpha * log(t)) / (2 * self.Acount))
-        valB = self.Bmean + sqrt((self.alpha * log(t)) / (2 * self.Bcount))
-        
-        #if(t < 10):
-        #    print('UCB', valA, valB)
-        
-        if valA > valB:
-            return 0
-        elif valA < valB:
-            return 1
-        else:
-            return bernoulli(0.5)
-
-    def update(self, arm, outcome):
-        """ Updates the estimate for the arm outcome """
-        if arm == 0:
-            self.Amean = (self.Amean * self.Acount + outcome) / (self.Acount + 1)
-            self.Acount += 1
-        elif arm == 1:
-            self.Bmean = (self.Bmean * self.Bcount + outcome) / (self.Bcount + 1)
-            self.Bcount += 1
-        else:
-            raise RuntimeError("Invalid arm number")
-
-
-class Thompson:
-    """
-    Thompson sampling
-    """
-
-    def __init__(self):
-        # initialize prior values
-        self.Acountpos = 1
-        self.Acountneg = 1
-        self.Bcountpos = 1
-        self.Bcountneg = 1
-
-    def choose(self, t):
-        """ Which arm to choose; t is the current time step. Returns arm index """
-        pA = np.random.beta(self.Acountpos, self.Acountneg)
-        pB = np.random.beta(self.Bcountpos, self.Bcountneg)
-        if pA > pB:
-            return 0
-        else:
-            return 1
-
-    def update(self, arm, outcome):
-        """ Updates the estimate for the arm outcome """
-        if arm == 0:
-            if outcome == 1:
-                self.Acountpos += 1
-            else:
-                self.Acountneg += 1
-        elif arm == 1:
-            if outcome == 1:
-                self.Bcountpos += 1
-            else:
-                self.Bcountneg += 1
-        else:
-            raise RuntimeError("Invalid arm number")
-
-
-## Lookead value function
-
-valuefunction = {}
-import pandas as pa
-
-valuefunction_csv = pa.read_csv('valuecomputation/ucb_value.csv')
-for (t, p, n, v) in zip(valuefunction_csv.Time, valuefunction_csv.Positive, valuefunction_csv.Negative, valuefunction_csv.Value):
-    valuefunction[(t,p,n)] = v
-
-
-class ValueFunction:
-    """
-    Use one-step lookahead with a *linearly separable* value function which
-    is precomputed for each arm separately
-    """
-
-    def __init__(self):
-        # initialize prior values
-        self.Acountpos = 1;
-        self.Acountneg = 1;
-        self.Bcountpos = 1;
-        self.Bcountneg = 1;
-
-    def choose(self, t):
-        """ Which arm to choose; t is the current time step. Returns arm index """
-
-        # the pre-computed value function is 0-based! (t=0 is the first time step)
-        vApos = valuefunction[(t,self.Acountpos+1,self.Acountneg)] + \
-                    valuefunction[(t,self.Bcountpos,self.Bcountneg)]
-        vAneg = valuefunction[(t,self.Acountpos,self.Acountneg+1)]  + \
-                    valuefunction[(t,self.Bcountpos,self.Bcountneg)]  
-        vBpos = valuefunction[(t,self.Bcountpos+1,self.Bcountneg)] + \
-                    valuefunction[(t,self.Acountpos,self.Acountneg)]
-        vBneg = valuefunction[(t,self.Bcountpos,self.Bcountneg+1)] + \
-                    valuefunction[(t,self.Acountpos,self.Acountneg)]
-
-        pA = self.Acountpos / (self.Acountpos + self.Acountneg)
-        qvalueA = pA * (1 + vApos) + (1 - pA) * vAneg
-        
-        pB = self.Bcountpos / (self.Bcountpos + self.Bcountneg)
-        qvalueB = pB * (1 + vBpos) + (1 - pB) * vBneg
-
-        # adjust value function by subtracting the value of no-action
-        qvalueA -= valuefunction[(t,self.Acountpos,self.Acountneg)] + \
-                    valuefunction[(t,self.Bcountpos,self.Bcountneg)]
-        
-        qvalueB -= valuefunction[(t,self.Acountpos,self.Acountneg)] + \
-                    valuefunction[(t,self.Bcountpos,self.Bcountneg)]
-                    
-        if qvalueA > qvalueB:
-            return 0
-        elif qvalueA < qvalueB:
-            return 1
-        else:
-            return bernoulli(0.5)
-
-    def update(self, arm, outcome):
-        """ Updates the estimate for the arm outcome """
-        if arm == 0:
-            if outcome == 1:
-                self.Acountpos += 1
-            else:
-                self.Acountneg += 1
-        elif arm == 1:
-            if outcome == 1:
-                self.Bcountpos += 1
-            else:
-                self.Bcountneg += 1
-        else:
-            raise RuntimeError("Invalid arm number")
-
-
-class ValueFunctionLookahead:
-    """
-    Use multi-step lookahead with a *linearly separable* value function which
-    is precomputed for each arm separately
-    """
-    def __init__(self, lookahead_hor = 1, scale = 1.0):
-        # initialize prior values
-        self.Acountpos = 1
-        self.Acountneg = 1
-        self.Bcountpos = 1
-        self.Bcountneg = 1
-        self.lookahead_hor = lookahead_hor
-        self.cache = {}
-        self.scale = scale
-
-    def _lookahead(self, state, t, steps_left):
-        """ Recursive and dumb lookahead 
-            The order of elements in state is:
-                Acountpos, Acountneg, Bcountpos, Bcountneg 
-            Returns: action, value function
-        """
-        global valuefunction
-        # terminate if this is the last step
-        if steps_left == 0:
-            return -1, self.scale * (valuefunction[(t, state[0], state[1])] + valuefunction[(t, state[2], state[3])])
-
-        # the cache is specific only to the particular run
-        if state in self.cache:
-            return self.cache[state]
-        
-        # the pre-computed value function is 0-based! (t=0 is the first time-step)
-        vApos = self._lookahead((state[0], state[1]+1, state[2], state[3]), t+1, steps_left-1)[1]
-        vAneg = self._lookahead((state[0]+1, state[1], state[2], state[3]), t+1, steps_left-1)[1]
-        vBpos = self._lookahead((state[0], state[1], state[2]+1, state[3]), t+1, steps_left-1)[1]
-        vBneg = self._lookahead((state[0], state[1], state[2], state[3]+1), t+1, steps_left-1)[1]
-
-        pA = state[0] / (state[0] + state[1])
-        qvalueA = pA * (1 + vApos) + (1 - pA) * vAneg
-        
-        pB = state[2] / (state[2] + state[3])
-        qvalueB = pB * (1 + vBpos) + (1 - pB) * vBneg
-
-
-        if qvalueA > qvalueB:       r = 0, qvalueA
-        elif qvalueA < qvalueB:     r = 1, qvalueB
-        else:                       r = bernoulli(0.5), qvalueA
-        
-        # cache the result
-        self.cache[state] = r
-        return r
-
-    def choose(self, t):
-        """ Which arm to choose; t is the current time step. Returns arm index """
-        # change 1-based time to 0-based
-        self.cache.clear()
-        return self._lookahead((self.Acountpos, self.Acountneg, self.Bcountpos, self.Bcountneg), t-1, self.lookahead_hor)[0]
 
     def update(self, arm, outcome):
         """ Updates the estimate for the arm outcome """
@@ -523,103 +402,3 @@ class ValueFunctionLookaheadStep:
         else:
             raise RuntimeError("Invalid arm number")
 
-
-## Test a single state
-
-
-vfl = ValueFunctionLookaheadStep(10,0.0,5)
-vfl._lookahead()
-
-
-## Compute and compare the mean regret of various methods
-
-horizon = 200
-trials = 1000
-
-ucb_regrets = evaluate(lambda: UCB(0.2), horizon, trials)
-vf_regrets = evaluate(lambda: ValueFunctionLookahead(1,0.0), horizon, trials)
-thompson_regrets = evaluate(Thompson, horizon, trials)
-#ola_regrets = evaluate(OptimisticLookAhead, horizon, trials)
-gittins_regrets = evaluate(Gittins, horizon, trials)
-
-# Plot the mean regret
-plt.figure(num=2, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
-plt.plot(ucb_regrets.mean(0), label='UCB')
-plt.plot(thompson_regrets.mean(0), label='Thompson')
-#plt.plot(ola_regrets.mean(0), label='OptimisticLookahead')
-plt.plot(vf_regrets.mean(0), '--', label='ValueFunction')
-plt.plot(gittins_regrets.mean(0), label='Gittins')
-plt.legend(loc='upper left')
-plt.xlabel('Time step')
-plt.ylabel('Regret')
-plt.grid()
-#plt.savefig('regrets.pdf')
-plt.show()
-
-
-## Compare the regret of solutions with a zero value function
-
-horizon = 200
-trials = 500
-
-gittins_regrets = evaluate(Gittins, horizon, trials)
-np.random.seed(40); random.seed(0);
-vf_regrets1 = evaluate(lambda: ValueFunctionLookaheadStep(1,0.4,0), horizon, trials)
-np.random.seed(40); random.seed(0);
-vf_regretsM = evaluate(lambda: ValueFunctionLookaheadStep(10,0.4,5), horizon, trials)
-
-# Plot the mean regret
-plt.figure(num=2, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
-plt.plot(vf_regrets1.mean(0), '-', label='ValueFunction L1')
-plt.plot(vf_regretsM.mean(0), '--', label='ValueFunction LM')
-plt.plot(gittins_regrets.mean(0), label='Gittins')
-plt.legend(loc='upper left')
-plt.xlabel('Time step')
-plt.ylabel('Regret')
-plt.grid()
-#plt.savefig('regrets.pdf')
-plt.show()
-
-
-## Compute regret as a function of delta (difference between the two arms)
-
-ticks = 30
-repetitions = 500
-
-# init p values
-runs = tuple(
-    (p1, p2) for p1 in np.linspace(0, 1, ticks) for p2 in np.linspace(0, 1, ticks) for r in range(repetitions) if
-    p1 != p2)
-deltas = np.array(tuple(abs(pA - pB) for pA, pB in runs))
-
-ucb_regrets = evaluate(UCB, horizon, runs)
-thompson_regrets = evaluate(Thompson, horizon, runs)
-ola_regrets = evaluate(OptimisticLookAhead, horizon, runs)
-gittins_regrets = evaluate(Gittins, horizon, runs)
-
-## Plot dependence on delta
-
-# average the 
-shrunkdelta = deltas.reshape(-1, repetitions)[:, 0]
-shrunkprobs = np.array([max(p1, p2) for p1, p2 in runs]).reshape(-1, repetitions)[:, 0]
-
-
-def plot_curve(data, pos, name):
-    plt.subplot(1, 4, pos)
-    plt.scatter(shrunkdelta, data[:, -1].reshape(-1, repetitions).mean(1) / (shrunkprobs * horizon) * 100, s=10,
-                c=shrunkprobs, edgecolors='face', cmap=matplotlib.cm.plasma)
-    plt.ylim(-1, 30)
-    plt.xlabel('$\Delta$')
-    plt.ylabel('Mean propotional regret (\%)')
-    plt.title(name)
-    plt.grid()
-
-
-plt.figure(num=None, figsize=(10, 6), dpi=80, facecolor='w', edgecolor='k')
-plot_curve(ucb_regrets, 1, "UCB")
-plot_curve(thompson_regrets, 2, "Thompson")
-plot_curve(ola_regrets, 3, "OptimisticLookahed")
-plot_curve(gittins_regrets, 4, "Gittins")
-
-plt.savefig('proportional_regret.pdf')
-plt.show()

@@ -1,12 +1,14 @@
-//usr/bin/g++ compute_values.cpp -fopenmp -march=native -O3 && ./a.out;
-#include<algorithm>
-#include<utility>
-#include<iostream>
-#include<chrono>
-#include<vector>
-#include<cmath>
-#include<map>
-#include<fstream>
+//usr/bin/g++ compute_values.cpp -std=c++1z -fopenmp -march=native -O3 && ./a.out;
+#include <algorithm>
+#include <utility>
+#include <iostream>
+#include <chrono>
+#include <vector>
+#include <cmath>
+#include <map>
+#include <fstream>
+#include <stdexcept>
+#include "csv.hpp"
 #include<eigen3/Eigen/Dense>
 
 using namespace std;
@@ -14,14 +16,16 @@ using namespace std;
 /// state type: (positive, negetive)
 typedef pair<const int, const int> state_t;
 
+
 template<class T> std::ostream & operator<<(std::ostream &os, const std::vector<T>& vec){
     for(const auto& p : vec)
-        cout << p << " ";
+        os << p << " ";
     return os;
 }
 
+/// Print a list
 template<class T1, class T2> std::ostream & operator<<(std::ostream &os, const std::pair<T1,T2>& p){
-    cout << "(" << p.first << ", " << p.second << ")";
+    os << "(" << p.first << ", " << p.second << ")";
     return os;
 }
 
@@ -48,15 +52,59 @@ double ucb_benefit(state_t state, long timestep){
     return sqrt(alpha * log(timestep) / (2.0*double(state.first + state.second)));
 }
 
+/// \returns gittins index value - expected return
+double gittins_benefit(const map<state_t,double>& state2gittins, state_t state){
+    double expected_reward = double(state.first) / double(state.first + state.second);
+    return state2gittins.at(state) - expected_reward;
+}
+
+/// Type of the index used for the computation
+enum class IndexType{ UCB, Gittins };
+
+/// Determine the name for the output file name
+map<state_t, double> load_gittins(const string& filename){
+    io::CSVReader<3> gittinsfile(filename);
+
+    gittinsfile.read_header(io::ignore_no_column, "Positive", "Negative", "Index");
+
+    long positive, negative;
+    double index;
+    map<state_t, double> state2gittins;
+
+    while(gittinsfile.read_row(positive,negative,index)){
+        state2gittins[std::make_pair(positive,negative)] = index;
+    }
+    return state2gittins;
+}
+
 int main(){
     // -- initialize ---------------------------------------------------
     // number of steps (horizon = 1 is 1 state)
     const uint horizon = 301;
+    const IndexType index = IndexType::Gittins;
 
     // output file name
-    const string output_filename = "ucb_value.csv";
+    string output_filename;
+    const string input_gittins_filename = "gittins.csv";
+    map<state_t, double> state2gittins; // state to Gittins index
+
+    // update parameters based on the index that is being used
+    if(index == IndexType::UCB){
+        cout << "Using UCB index ..." << endl;
+        output_filename = "ucb_value.csv";
+    }
+    else if(index == IndexType::Gittins){
+        cout << "Using Gittins index ..." << endl;
+        output_filename =  "gittins_value.csv";
+        cout << "Loading Gittins indexes ..." << endl;
+        state2gittins = load_gittins(input_gittins_filename);
+    }
+    else{
+        throw out_of_range("Unknown index type");
+    }
 
     cout << "Horizon: " << horizon << endl;
+    cout << "Output file: \"" << output_filename << "\"" << endl;
 
     auto start = chrono::steady_clock::now();
     // -- generate states -------------------------------------------------
@@ -119,7 +167,12 @@ int main(){
                     positive_sp.second * valuefunction(t, state2index[positive_sp.first]) +
                     negative_sp.second * valuefunction(t, state2index[negative_sp.first]);
 
-                valuefunction(t,istate) =  lvaluet - ucb_benefit(state, t);
+                double benefit;
+                if(index == IndexType::UCB) benefit = ucb_benefit(state, t);
+                else if(index == IndexType::Gittins) benefit = gittins_benefit(state2gittins, state);
+                else throw out_of_range("Unknown index type");
+
+                valuefunction(t,istate) =  lvaluet - benefit;
             }
 
             // compute an appropriate offset so that the value function is an over-estimate
