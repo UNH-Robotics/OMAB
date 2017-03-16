@@ -51,7 +51,7 @@ double ucb_benefit(state_t state, long timestep){
 int main(){
     // -- initialize ---------------------------------------------------
     // number of steps (horizon = 1 is 1 state)
-    const uint horizon = 201;
+    const uint horizon = 301;
 
     // output file name
     const string output_filename = "ucb_value.csv";
@@ -118,7 +118,7 @@ int main(){
                 double lvaluet =
                     positive_sp.second * valuefunction(t, state2index[positive_sp.first]) +
                     negative_sp.second * valuefunction(t, state2index[negative_sp.first]);
-                
+
                 valuefunction(t,istate) =  lvaluet - ucb_benefit(state, t);
             }
 

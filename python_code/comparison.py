@@ -296,7 +296,7 @@ for (t, p, n, v) in zip(valuefunction_csv.Time, valuefunction_csv.Positive, valu
 class ValueFunction:
     """
     Use one-step lookahead with a *linearly separable* value function which
-    is precomputed for eacha arm separately
+    is precomputed for each arm separately
     """
 
     def __init__(self):
@@ -357,8 +357,8 @@ class ValueFunction:
 
 class ValueFunctionLookahead:
     """
-    Use one-step lookahead with a *linearly separable* value function which
-    is precomputed for eacha arm separately
+    Use multi-step lookahead with a *linearly separable* value function which
+    is precomputed for each arm separately
     """
     def __init__(self, lookahead_hor = 1, scale = 1.0):
         # initialize prior values
@@ -371,7 +371,7 @@ class ValueFunctionLookahead:
         self.scale = scale
 
     def _lookahead(self, state, t, steps_left):
-        """ Recursive and dumb lookahead (state values can be computed twice)
+        """ Recursive and dumb lookahead 
             The order of elements in state is:
                 Acountpos, Acountneg, Bcountpos, Bcountneg 
             Returns: action, value function
@@ -428,21 +428,119 @@ class ValueFunctionLookahead:
             raise RuntimeError("Invalid arm number")
 
 
-## Compute the mean regret
+## Value Function with Steps
 
-horizon = 199
-trials = 500
+class ValueFunctionLookaheadStep:
+    """
+    Use multi-step lookahead with a *linearly separable* value function which
+    is precomputed for each arm separately.
+    
+    The same action is fixed for multiple steps. This takes advantage of the
+    relatively small branching factor when the result is fixed to a single action.
+    """
+    def __init__(self, lookahead_hor = 1, scale = 1.0, steps_fix_actions = 0):
+        # initialize prior values
+        self.Acountpos = 1
+        self.Acountneg = 1
+        self.Bcountpos = 1
+        self.Bcountneg = 1
+        self.lookahead_hor = lookahead_hor
+        self.cache = {}
+        self.scale = scale
+        self.step_fix_actions = steps_fix_actions
 
-#np.random.seed(0)
-#random.seed(0)
-ucb_regrets = evaluate(lambda: UCB(0.4), horizon, trials)
-#np.random.seed(0)
-#random.seed(0)
-vf_regrets = evaluate(lambda: ValueFunctionLookahead(1,0.4), horizon, trials)
+    def _lookahead(self, state, t, steps_left, fixed_action, fixed_action_steps):
+        """ Recursive lookahead withc caching and fixed actions for a given number of steps
+            The order of elements in state is:
+                Acountpos, Acountneg, Bcountpos, Bcountneg 
+            steps_left : total number of lookahead steps left
+            fixed_action : if the action is fixed
+            fixed_action_steps : how many more steps the action is fixed for
+            Returns: action, value function
+        """
+        global valuefunction
+        # terminate if this is the last step
+        if steps_left == 0:
+            return -1, self.scale * (valuefunction[(t, state[0], state[1])] + valuefunction[(t, state[2], state[3])])
+
+        # the cache is specific only to the particular run
+        if state in self.cache:
+            return self.cache[state]
+
+        if fixed_action_steps <= 0:
+            optimize_action = True
+            next_fixed_action_steps = self.step_fix_actions
+        else:
+            optimize_action = False
+            next_fixed_action_steps = fixed_action_steps - 1
+
+        if fixed_action == 0 or optimize_action:
+            # the pre-computed value function is 0-based! (t=0 is the first time-step)
+            vApos = self._lookahead((state[0], state[1]+1, state[2], state[3]), t+1, steps_left-1,0,next_fixed_action_steps)[1]
+            vAneg = self._lookahead((state[0]+1, state[1], state[2], state[3]), t+1, steps_left-1,0,next_fixed_action_steps)[1]
+            pA = state[0] / (state[0] + state[1])
+            qvalueA = pA * (1 + vApos) + (1 - pA) * vAneg
+        else:
+            qvalueA = - math.inf
+        
+
+        if fixed_action == 1 or optimize_action:
+            vBpos = self._lookahead((state[0], state[1], state[2]+1, state[3]), t+1, steps_left-1,1,next_fixed_action_steps)[1]
+            vBneg = self._lookahead((state[0], state[1], state[2], state[3]+1), t+1, steps_left-1,1,next_fixed_action_steps)[1]
+            pB = state[2] / (state[2] + state[3])
+            qvalueB = pB * (1 + vBpos) + (1 - pB) * vBneg
+        else:
+            qvalueB = - math.inf
+            
+        assert max(qvalueA, qvalueB) > - math.inf
+
+        if qvalueA > qvalueB:       r = 0, qvalueA
+        elif qvalueA < qvalueB:     r = 1, qvalueB
+        else:                       r = 0, qvalueA #r = bernoulli(0.5), qvalueA
+        
+        # cache the result
+        self.cache[state] = r
+        return r
+
+    def choose(self, t):
+        """ Which arm to choose; t is the current time step. Returns arm index """
+        # change 1-based time to 0-based
+        self.cache.clear()
+        return self._lookahead((self.Acountpos, self.Acountneg, self.Bcountpos, self.Bcountneg), t-1, self.lookahead_hor, -1, 0)[0]
+
+    def update(self, arm, outcome):
+        """ Updates the estimate for the arm outcome """
+        if arm == 0:
+            if outcome == 1:
+                self.Acountpos += 1
+            else:
+                self.Acountneg += 1
+        elif arm == 1:
+            if outcome == 1:
+                self.Bcountpos += 1
+            else:
+                self.Bcountneg += 1
+        else:
+            raise RuntimeError("Invalid arm number")
+
+
+## Test a single state
+
+
+vfl = ValueFunctionLookaheadStep(10,0.0,5)
+vfl._lookahead()
+
+
+## Compute and compare the mean regret of various methods
+
+horizon = 200
+trials = 1000
+
+ucb_regrets = evaluate(lambda: UCB(0.2), horizon, trials)
+vf_regrets = evaluate(lambda: ValueFunctionLookahead(1,0.0), horizon, trials)
 thompson_regrets = evaluate(Thompson, horizon, trials)
 #ola_regrets = evaluate(OptimisticLookAhead, horizon, trials)
 gittins_regrets = evaluate(Gittins, horizon, trials)
-
 
 # Plot the mean regret
 plt.figure(num=2, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
@@ -457,6 +555,31 @@ plt.ylabel('Regret')
 plt.grid()
 #plt.savefig('regrets.pdf')
 plt.show()
+
+
+## Compare the regret of solutions with a zero value function
+
+horizon = 200
+trials = 500
+
+gittins_regrets = evaluate(Gittins, horizon, trials)
+np.random.seed(40); random.seed(0);
+vf_regrets1 = evaluate(lambda: ValueFunctionLookaheadStep(1,0.4,0), horizon, trials)
+np.random.seed(40); random.seed(0);
+vf_regretsM = evaluate(lambda: ValueFunctionLookaheadStep(10,0.4,5), horizon, trials)
+
+# Plot the mean regret
+plt.figure(num=2, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
+plt.plot(vf_regrets1.mean(0), '-', label='ValueFunction L1')
+plt.plot(vf_regretsM.mean(0), '--', label='ValueFunction LM')
+plt.plot(gittins_regrets.mean(0), label='Gittins')
+plt.legend(loc='upper left')
+plt.xlabel('Time step')
+plt.ylabel('Regret')
+plt.grid()
+#plt.savefig('regrets.pdf')
+plt.show()
+
 
 ## Compute regret as a function of delta (difference between the two arms)
 
