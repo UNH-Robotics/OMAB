@@ -26,7 +26,7 @@ fun main(args: Array<String>) {
     val configuration = Configuration(
             arms = arms,
             rewards = doubleArrayOf(1.0, 1.1, 1.2),
-            horizon = 95,
+            horizon = 100,
             experimentProbabilities = generateConstrainedProbabilities(resolution = 10, count = arms),
             iterations = 10  )
 
@@ -42,11 +42,11 @@ fun main(args: Array<String>) {
     executeAlgorithm("TS", ::evaluateStochasticAlgorithm, ::thompsonSampling, results, configuration)
     executeAlgorithm("Gittins", ::evaluateStochasticAlgorithm, ::gittinsIndex, results, configuration)
 
-    configuration[LOOKAHEAD] = 1
     configuration[CONSTRAINED_PROBABILITIES] = true
 
-    doubleArrayOf(0.0, 0.1, 0.4).forEach {
-        configuration[DISCOUNT] = it
+    configuration[DISCOUNT] = 0.0
+    intArrayOf(1, 2, 4).forEach {
+        configuration[LOOKAHEAD] = it
         executeAlgorithm("UCB-Index Constrained - l${configuration[LOOKAHEAD]} b${configuration[BETA_SAMPLE_COUNT]} d${configuration[DISCOUNT]}", ::evaluateStochasticAlgorithm, ::ucbLookahead, results, configuration)
     }
 
