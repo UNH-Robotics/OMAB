@@ -20,7 +20,7 @@ fun parseGittinsIndices(path: String): HashMap<Pair<Int, Int>, Double> {
     return gittinsIndices
 }
 
-val GITTINS_INDICES = parseGittinsIndices("gittins.csv")
+val GITTINS_INDICES = parseGittinsIndices("results/gittins.csv")
 
 fun gittinsIndex(state: BeliefState, configuration: Configuration, random: Random): Int {
     return state.arms.maxBy { GITTINS_INDICES[state.alphas[it] to state.betas[it]]!! * configuration.rewards[it] }!!

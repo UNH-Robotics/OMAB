@@ -10,6 +10,8 @@ import edu.unh.cs.ai.omab.utils.betaDistributions
 import edu.unh.cs.ai.omab.utils.maxValueBy
 import edu.unh.cs.ai.omab.utils.pow
 import org.apache.commons.math3.distribution.BetaDistribution
+import java.io.BufferedReader
+import java.io.InputStreamReader
 import java.lang.Math.min
 import java.util.*
 import java.util.stream.IntStream
@@ -40,19 +42,25 @@ fun executeStochasticAlgorithm(world: Simulator, simulator: Simulator, configura
     return rewards
 }
 
-fun parseUcbValueFunction(path: String): HashMap<Triple<Int, Int, Int>, Double> {
-    val ucbValues = hashMapOf<Triple<Int, Int, Int>, Double>()
+fun parseUcbValueFunction(path: String): HashMap<StateKey, Double> {
+    val ucbValues = hashMapOf<StateKey, Double>()
     val input = Unit::class.java.classLoader.getResourceAsStream(path) ?: throw RuntimeException("Resource not found")
-    input.reader().readLines()
-            .drop(1) // The first line contains the headers
-            .map { it.split(",") }
-            .filter { it.size == 4 }
-            .forEach { ucbValues[Triple(it[0].toInt(), it[1].toInt(), it[2].toInt())] = it[3].toDouble() }
+
+    BufferedReader(InputStreamReader(input))
+            .lines()
+            .skip(1)
+            .forEach {
+                val tokens = it.split(",")
+                if (tokens.size == 4) {
+                    ucbValues[StateKey(tokens[0].toInt(), tokens[1].toInt(), tokens[2].toInt())] = tokens[3].toDouble()
+                }
+            }
 
     return ucbValues
 }
 
-val UCB_INDICES = parseUcbValueFunction("ucb_value.csv")
+data class StateKey(val steps: Int, val alpha: Int, val beta: Int)
+val UCB_INDICES = parseUcbValueFunction("results/ucb_value.csv")
 
 fun ucbIndex(state: BeliefState, configuration: Configuration, random: Random): Int {
     // Acquire parameters
@@ -62,7 +70,7 @@ fun ucbIndex(state: BeliefState, configuration: Configuration, random: Random): 
     val constrainedProbabilities = configuration[CONSTRAINED_PROBABILITIES] as Boolean
 
     fun calculateUtility(state: BeliefState): Double {
-        val ucbValue = state.arms.sumByDouble { UCB_INDICES[Triple(state.totalSteps(), state.alphas[it], state.betas[it])]!! }
+        val ucbValue = state.arms.sumByDouble { UCB_INDICES[StateKey(state.totalSteps(), state.alphas[it], state.betas[it])]!! }
         state.utility = ucbValue
         return ucbValue * discountFactor
     }
@@ -94,7 +102,7 @@ fun ucbLookahead(state: BeliefState, configuration: Configuration, random: Rando
     fun lookahead(state: BeliefState, currentDepth: Int, maximumDepth: Int): Double {
         return if (currentDepth >= maximumDepth) {
             exploredStates[state] = state
-            val ucbValue = state.arms.sumByDouble { UCB_INDICES[Triple(state.totalSteps(), state.alphas[it], state.betas[it])]!! }
+            val ucbValue = state.arms.sumByDouble { UCB_INDICES[StateKey(state.totalSteps(), state.alphas[it], state.betas[it])]!! }
             state.utility = ucbValue
             return ucbValue * discountFactor
         } else {
