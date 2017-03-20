@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from pandas import DataFrame
+from scipy import stats
 
 __author__ = 'Bence Cserna'
 
@@ -68,15 +69,36 @@ def configure_sns():
     sns.set_style("white")
 
 
+def probability_index(probabilities):
+    print(probabilities)
+    multiplier = 1
+    index = 0
+    for p in probabilities:
+        index += round(p * 100) * multiplier
+        multiplier *= 10
+    return index
+
+
+def expand_dataset(data, column):
+    size = len(data[column].values[0])
+    return DataFrame({col: np.repeat(data[col].values, data[column].str.len())
+                      for col in data.columns.difference([column])})\
+        .assign(**{column: np.concatenate(data[column].values)})\
+        .assign(step=lambda x: x.index % size)
+
+
 def main():
     configure_sns()
     data = DataFrame(read_data("../results/resultT.dat"))
-    print(data)
-    # data2 = DataFrame(read_data("../results/result_rtdp_h80.dat"))
-    # regret_box_plot(data)
-    # data.set_index('algorithm', inplace=True)
-    # data = data.append(data2, ignore_index=True)
-    regret_plot(data)
+
+    data = data.assign(pindex=lambda df: [probability_index(probabilities) for probabilities in df.probabilities])
+    regrets_ = data[['algorithm', 'cumSumRegrets', 'pindex']]
+    expanded = expand_dataset(regrets_, 'cumSumRegrets')
+    print(expanded)
+    ax = sns.tsplot(time="step", value="cumSumRegrets", unit="pindex", condition="algorithm", data=expanded)
+    sns.plt.show()
+
+    # regret_plot(data)
 
 
 if __name__ == "__main__":
