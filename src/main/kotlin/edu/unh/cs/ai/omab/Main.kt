@@ -22,7 +22,7 @@ fun main(args: Array<String>) {
 
     // -------------------------- Main configuration --------------------------
 
-    val arms = 3
+    val arms = 2
     val configuration = Configuration(
             arms = arms,
             rewards = doubleArrayOf(1.0, 1.1, 1.2),
@@ -30,24 +30,23 @@ fun main(args: Array<String>) {
             experimentProbabilities = generateConstrainedProbabilities(resolution = 10, count = arms),
             iterations = 10  )
 
-    configuration[BETA_SAMPLE_COUNT] = 100
-    configuration[DISCOUNT] = 0.9
 
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
 
     println("Number of probabilities: ${configuration.experimentProbabilities.size}")
-    configuration.experimentProbabilities.forEach { println("${it[0]} ${it[1]} ") }
+//    configuration.experimentProbabilities.forEach { println("${it[0]} ${it[1]} ") }
 
     executeAlgorithm("UCB", ::evaluateStochasticAlgorithm, ::upperConfidenceBounds, results, configuration)
     executeAlgorithm("TS", ::evaluateStochasticAlgorithm, ::thompsonSampling, results, configuration)
     executeAlgorithm("Gittins", ::evaluateStochasticAlgorithm, ::gittinsIndex, results, configuration)
 
+    configuration[BETA_SAMPLE_COUNT] = 100
     configuration[CONSTRAINED_PROBABILITIES] = true
 
-    configuration[DISCOUNT] = 0.0
-    intArrayOf(1, 2, 4).forEach {
+    configuration[DISCOUNT] = 1.0
+    intArrayOf(1).forEach {
         configuration[LOOKAHEAD] = it
-        executeAlgorithm("UCB-Index Constrained - l${configuration[LOOKAHEAD]} b${configuration[BETA_SAMPLE_COUNT]} d${configuration[DISCOUNT]}", ::evaluateStochasticAlgorithm, ::ucbLookahead, results, configuration)
+        executeAlgorithm("Gittins Constrained - l${configuration[LOOKAHEAD]} b${configuration[BETA_SAMPLE_COUNT]} d${configuration[DISCOUNT]}", ::evaluateStochasticAlgorithm, ::gittinsValueLookahead, results, configuration)
     }
 
     // ------------------------------------------------------------------------

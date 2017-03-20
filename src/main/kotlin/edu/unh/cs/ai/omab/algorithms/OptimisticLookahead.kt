@@ -42,7 +42,7 @@ fun executeStochasticAlgorithm(world: Simulator, simulator: Simulator, configura
     return rewards
 }
 
-fun parseUcbValueFunction(path: String): HashMap<StateKey, Double> {
+fun parseValueFunction(path: String): HashMap<StateKey, Double> {
     val ucbValues = hashMapOf<StateKey, Double>()
     val input = Unit::class.java.classLoader.getResourceAsStream(path) ?: throw RuntimeException("Resource not found")
 
@@ -60,7 +60,8 @@ fun parseUcbValueFunction(path: String): HashMap<StateKey, Double> {
 }
 
 data class StateKey(val steps: Int, val alpha: Int, val beta: Int)
-val UCB_INDICES = parseUcbValueFunction("results/ucb_value.csv")
+val UCB_VALUES = parseValueFunction("ucb_value.csv")
+val GITTINS_VALUES = parseValueFunction("gittins_value.csv")
 
 fun ucbIndex(state: BeliefState, configuration: Configuration, random: Random): Int {
     // Acquire parameters
@@ -70,7 +71,7 @@ fun ucbIndex(state: BeliefState, configuration: Configuration, random: Random): 
     val constrainedProbabilities = configuration[CONSTRAINED_PROBABILITIES] as Boolean
 
     fun calculateUtility(state: BeliefState): Double {
-        val ucbValue = state.arms.sumByDouble { UCB_INDICES[StateKey(state.totalSteps(), state.alphas[it], state.betas[it])]!! }
+        val ucbValue = state.arms.sumByDouble { UCB_VALUES[StateKey(state.totalSteps(), state.alphas[it], state.betas[it])]!! }
         state.utility = ucbValue
         return ucbValue * discountFactor
     }
@@ -89,7 +90,16 @@ fun ucbIndex(state: BeliefState, configuration: Configuration, random: Random): 
     }!!.first.action
 }
 
-fun ucbLookahead(state: BeliefState, configuration: Configuration, random: Random): Int {
+fun ucbValueLookahead(state: BeliefState, configuration: Configuration, random: Random): Int {
+    return valueFunctionLookahead(state, configuration, random, UCB_VALUES)
+}
+
+fun gittinsValueLookahead(state: BeliefState, configuration: Configuration, random: Random): Int {
+    configuration[DISCOUNT] = 1.0
+    return valueFunctionLookahead(state, configuration, random, GITTINS_VALUES)
+}
+
+private fun valueFunctionLookahead(state: BeliefState, configuration: Configuration, random: Random, valueFunction: HashMap<StateKey, Double> ): Int {
     // Acquire parameters
     val lookahead = min(configuration[LOOKAHEAD] as Int, configuration.horizon)
     val discountFactor = configuration[DISCOUNT] as Double
@@ -102,7 +112,7 @@ fun ucbLookahead(state: BeliefState, configuration: Configuration, random: Rando
     fun lookahead(state: BeliefState, currentDepth: Int, maximumDepth: Int): Double {
         return if (currentDepth >= maximumDepth) {
             exploredStates[state] = state
-            val ucbValue = state.arms.sumByDouble { UCB_INDICES[StateKey(state.totalSteps(), state.alphas[it], state.betas[it])]!! }
+            val ucbValue = state.arms.sumByDouble { valueFunction[StateKey(state.totalSteps(), state.alphas[it], state.betas[it])]!! }
             state.utility = ucbValue
             return ucbValue * discountFactor
         } else {
