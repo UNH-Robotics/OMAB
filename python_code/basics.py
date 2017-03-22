@@ -13,15 +13,12 @@ matplotlib.rcParams['ps.useafm'] = True
 matplotlib.rcParams['pdf.use14corefonts'] = True
 matplotlib.rcParams['text.usetex'] = True
 
-
 ## Helper methods
 
 def bernoulli(p):
     """ Sample from Bernoulli distribution """
-    if random.random() <= p:
-        return 1
-    else:
-        return 0
+    if random.random() <= p:    return 1
+    else:                       return 0
         
 
 ## Evaluation method

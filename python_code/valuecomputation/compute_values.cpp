@@ -80,8 +80,8 @@ map<state_t, double> load_gittins(const string& filename){
 int main(){
     // -- initialize ---------------------------------------------------
     // number of steps (horizon = 1 is 1 state)
-    const uint horizon = 301;
-    const IndexType index = IndexType::Gittins;
+    const uint horizon = 402;
+    const IndexType index = IndexType::UCB;
 
     // output file name
     string output_filename;
