@@ -82,10 +82,7 @@ class ValueFunctionLookahead:
     """
     def __init__(self, valuefunction, lookahead_hor = 1, scale = 1.0):
         # initialize prior values
-        self.Acountpos = 1
-        self.Acountneg = 1
-        self.Bcountpos = 1
-        self.Bcountneg = 1
+        self.Acountpos = 1;self.Acountneg = 1;self.Bcountpos = 1;self.Bcountneg = 1;
         self.lookahead_hor = lookahead_hor
         self.valuefunction = valuefunction
         self.cache = {}
@@ -170,29 +167,6 @@ plt.grid()
 plt.savefig('regrets.pdf')
 plt.show()
 
-
-## Compare the regret of solutions with a zero value function
-
-horizon = 200
-trials = 500
-
-gittins_regrets = evaluate(Gittins, horizon, trials)
-np.random.seed(40); random.seed(0);
-vf_regrets1 = evaluate(lambda: ValueFunctionLookaheadStep(1,0.4,0), horizon, trials)
-np.random.seed(40); random.seed(0);
-vf_regretsM = evaluate(lambda: ValueFunctionLookaheadStep(10,0.4,5), horizon, trials)
-
-# Plot the mean regret
-plt.figure(num=2, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
-plt.plot(vf_regrets1.mean(0), '-', label='ValueFunction L1')
-plt.plot(vf_regretsM.mean(0), '--', label='ValueFunction LM')
-plt.plot(gittins_regrets.mean(0), label='Gittins')
-plt.legend(loc='upper left')
-plt.xlabel('Time step')
-plt.ylabel('Regret')
-plt.grid()
-#plt.savefig('regrets.pdf')
-plt.show()
 
 
 ## Compute regret as a function of delta (difference between the two arms)
@@ -402,3 +376,26 @@ class ValueFunctionLookaheadStep:
         else:
             raise RuntimeError("Invalid arm number")
 
+
+## Compare the regret of solutions with a zero value function
+
+horizon = 200
+trials = 500
+
+gittins_regrets = evaluate(Gittins, horizon, trials)
+np.random.seed(40); random.seed(0);
+vf_regrets1 = evaluate(lambda: ValueFunctionLookaheadStep(1,0.4,0), horizon, trials)
+np.random.seed(40); random.seed(0);
+vf_regretsM = evaluate(lambda: ValueFunctionLookaheadStep(10,0.4,5), horizon, trials)
+
+# Plot the mean regret
+plt.figure(num=2, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
+plt.plot(vf_regrets1.mean(0), '-', label='ValueFunction L1')
+plt.plot(vf_regretsM.mean(0), '--', label='ValueFunction LM')
+plt.plot(gittins_regrets.mean(0), label='Gittins')
+plt.legend(loc='upper left')
+plt.xlabel('Time step')
+plt.ylabel('Regret')
+plt.grid()
+#plt.savefig('regrets.pdf')
+plt.show()
