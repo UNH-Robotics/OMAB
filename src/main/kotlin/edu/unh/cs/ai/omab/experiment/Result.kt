@@ -7,20 +7,14 @@ import java.io.Writer
  */
 class Result(val algorithm: String,
              val probabilities: DoubleArray,
-             val optimalReward: Double,
-             val reward: Double,
-             val regret: Double,
-             val averageRegrets: List<Double>,
-             val cumSumRegret: List<Double>) {
+             val cumSumRegret: List<Double>,
+             val probabilityId: Int,
+             val iteration: Int) {
 
     fun toJson(): String {
-        return "{ \"algorithm\": \"$algorithm\", \"optimalReward\": $optimalReward, \"reward\": $reward, \"regret\": $regret, \"probabilities\": ${probabilities.toJson()}, \"averageRegrets\": ${averageRegrets.toJson()}, \"cumSumRegrets\": ${cumSumRegret.toJson()}}"
+        return "{ \"algorithm\": \"$algorithm\", \"probabilities\": ${probabilities.toJson()}, \"probabilityId\": $probabilityId, \"iteration\": $iteration, \"cumSumRegrets\": ${cumSumRegret.toJson()}}"
     }
 
-    override fun toString(): String {
-        return "algorithm: $algorithm, regret: $regret, optimalReward: $optimalReward, reward: $reward"
-
-    }
 }
 
 fun DoubleArray.toJson(): String {

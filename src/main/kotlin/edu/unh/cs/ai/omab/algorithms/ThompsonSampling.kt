@@ -62,7 +62,7 @@ fun executeThompsonSampling(world: Simulator, simulator: Simulator, probabilitie
         sum
     }
 
-    results.add(Result("TS${if (configuration.ignoreInconsistentState) "-IGNORE" else ""}", probabilities, expectedMaxReward, averageRegrets.last(), expectedMaxReward - averageRegrets.last(), averageRegrets, cumSumRegrets))
+//    results.add(Result("TS${if (configuration.ignoreInconsistentState) "-IGNORE" else ""}", probabilities, expectedMaxReward, averageRegrets.last(), expectedMaxReward - averageRegrets.last(), averageRegrets, cumSumRegrets))
 
     return results
 }

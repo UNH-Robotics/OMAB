@@ -96,7 +96,7 @@ fun executeValueIteration(world: Simulator, simulator: Simulator, probabilities:
         sum += it
         sum
     }
-    results.add(Result("VI", probabilities, expectedMaxReward, averageRegrets.last(), expectedMaxReward - averageRegrets.last(), averageRegrets, cumSumRegrets))
+//    results.add(Result("VI", probabilities, expectedMaxReward, averageRegrets.last(), expectedMaxReward - averageRegrets.last(), averageRegrets, cumSumRegrets))
 
     return results
 }

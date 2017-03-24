@@ -68,7 +68,7 @@ fun executeUcb(world: Simulator, simulator: Simulator, probabilities: DoubleArra
         sum
     }
 
-    results.add(Result("UCB${if (configuration.ignoreInconsistentState) "-IGNORE" else ""}", probabilities, expectedMaxReward, averageRegrets.last(), expectedMaxReward - averageRegrets.last(), averageRegrets, cumSumRegrets))
+//    results.add(Result("UCB${if (configuration.ignoreInconsistentState) "-IGNORE" else ""}", probabilities, expectedMaxReward, averageRegrets.last(), expectedMaxReward - averageRegrets.last(), averageRegrets, cumSumRegrets))
 
     return results
 }

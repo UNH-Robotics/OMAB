@@ -183,7 +183,7 @@ fun executeBrtdp(world: Simulator, simulator: Simulator, probabilities: DoubleAr
         println("BRTDP: $rollOutCount, probabilities: $probabilities, expectedMaxReward: $expectedMaxReward, " +
                 "averageRewards.last(): ${averageRegret.last()}, averageRegret: $averageRegret")
 
-        results.add(Result("BRTDP: $rollOutCount", probabilities, expectedMaxReward, averageRegret.last(), expectedMaxReward - averageRegret.last(), averageRegret, cumSumRegret))
+//        results.add(Result("BRTDP: $rollOutCount", probabilities, expectedMaxReward, averageRegret.last(), expectedMaxReward - averageRegret.last(), averageRegret, cumSumRegret))
     }
 
     return results

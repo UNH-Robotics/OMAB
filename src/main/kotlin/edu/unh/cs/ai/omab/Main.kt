@@ -22,13 +22,14 @@ fun main(args: Array<String>) {
 
     // -------------------------- Main configuration --------------------------
 
-    val arms = 2
+    val arms = 3
+
     val configuration = Configuration(
             arms = arms,
-            rewards = doubleArrayOf(1.0, 1.1, 1.2),
-            horizon = 100,
+            rewards = doubleArrayOf(1.0, 1.0, 1.0),
+            horizon = 299,
             experimentProbabilities = generateConstrainedProbabilities(resolution = 10, count = arms),
-            iterations = 10  )
+            iterations = 20)
 
 
     val results: MutableList<Result> = Collections.synchronizedList(ArrayList())
@@ -36,17 +37,24 @@ fun main(args: Array<String>) {
     println("Number of probabilities: ${configuration.experimentProbabilities.size}")
 //    configuration.experimentProbabilities.forEach { println("${it[0]} ${it[1]} ") }
 
-    executeAlgorithm("UCB", ::evaluateStochasticAlgorithm, ::upperConfidenceBounds, results, configuration)
-    executeAlgorithm("TS", ::evaluateStochasticAlgorithm, ::thompsonSampling, results, configuration)
-    executeAlgorithm("Gittins", ::evaluateStochasticAlgorithm, ::gittinsIndex, results, configuration)
+    val configuredExecutor = { name: String, algorithm: Algorithm -> executeAlgorithm(name, ::evaluateStochasticAlgorithm, algorithm, results, configuration) }
 
+    configuration[CONSTRAINED_PROBABILITIES] = false
     configuration[BETA_SAMPLE_COUNT] = 100
-    configuration[CONSTRAINED_PROBABILITIES] = true
 
-    configuration[DISCOUNT] = 1.0
+    executeAlgorithm("Gittins", ::evaluateStochasticAlgorithm, ::gittinsIndex, results, configuration)
+    configuredExecutor("Bayes-UCB", ::bayesUpperConfidenceBounds)
+    configuredExecutor("UCB", ::upperConfidenceBounds)
+    executeAlgorithm("TS", ::evaluateStochasticAlgorithm, ::thompsonSampling, results, configuration)
+
     intArrayOf(1).forEach {
         configuration[LOOKAHEAD] = it
-        executeAlgorithm("Gittins Constrained - l${configuration[LOOKAHEAD]} b${configuration[BETA_SAMPLE_COUNT]} d${configuration[DISCOUNT]}", ::evaluateStochasticAlgorithm, ::gittinsValueLookahead, results, configuration)
+        configuration[DISCOUNT] = 1.0
+        configuredExecutor("Gittins-Value ${if (configuration[CONSTRAINED_PROBABILITIES] as Boolean) "Constrained" else ""}", ::gittinsValueLookahead)
+        configuration[DISCOUNT] = 0.4
+        configuredExecutor("UCB-Value ${if (configuration[CONSTRAINED_PROBABILITIES] as Boolean) "Constrained" else ""} - d${configuration[DISCOUNT]}", ::ucbValueLookahead)
+        configuration[DISCOUNT] = 1.0
+        configuredExecutor("UCB-Value ${if (configuration[CONSTRAINED_PROBABILITIES] as Boolean) "Constrained" else ""} - b${configuration[BETA_SAMPLE_COUNT]} d${configuration[DISCOUNT]}", ::ucbValueLookahead)
     }
 
     // ------------------------------------------------------------------------
@@ -56,14 +64,17 @@ fun main(args: Array<String>) {
     }
 }
 
+typealias Algorithm = (BeliefState, Configuration, Random) -> Int
+typealias AlgorithmEvaluator = (world: Simulator, simulator: Simulator, Pair<Int, DoubleArray>, Configuration, algorithm: Algorithm, name: String) -> List<Result>
+
 private fun executeAlgorithm(
         name: String,
-        executor: (world: Simulator, simulator: Simulator, DoubleArray, Configuration, algorithm: (BeliefState, Configuration, Random) -> Int, name: String) -> List<Result>,
+        executor: (world: Simulator, simulator: Simulator, Pair<Int, DoubleArray>, Configuration, algorithm: Algorithm, name: String) -> List<Result>,
         algorithm: (BeliefState, Configuration, Random) -> Int,
         results: MutableList<Result>,
         configuration: Configuration) {
 
-    val experimentProbabilities = configuration.experimentProbabilities
+    val experimentProbabilities = configuration.experimentProbabilities.mapIndexed { index, doubles -> index to doubles }
 
     println("Executing $name")
     val progressBar = ProgressBar(experimentProbabilities.size)
@@ -74,7 +85,7 @@ private fun executeAlgorithm(
                 .parallelStream()
                 .forEach { probabilities ->
                     results.addAll(executor(
-                            BanditWorld(probabilities, configuration.rewards),
+                            BanditWorld(probabilities.second, configuration.rewards),
                             BanditSimulator(configuration.rewards),
                             probabilities,
                             configuration, algorithm, name))

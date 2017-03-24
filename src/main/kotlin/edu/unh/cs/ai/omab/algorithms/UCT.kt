@@ -1,6 +1,5 @@
 package edu.unh.cs.ai.omab.algorithms
 
-import edu.unh.cs.ai.omab.utils.maxIndex
 import edu.unh.cs.ai.omab.domain.BeliefState
 import edu.unh.cs.ai.omab.domain.MDP
 import edu.unh.cs.ai.omab.domain.Simulator
@@ -8,6 +7,7 @@ import edu.unh.cs.ai.omab.experiment.Configuration
 import edu.unh.cs.ai.omab.experiment.Result
 import edu.unh.cs.ai.omab.experiment.TerminationChecker
 import edu.unh.cs.ai.omab.experiment.terminationCheckers.FakeTerminationChecker
+import edu.unh.cs.ai.omab.utils.maxIndex
 import java.util.*
 import java.util.stream.IntStream
 
@@ -240,7 +240,7 @@ fun evaluateUct(world: Simulator, simulator: Simulator, probabilities: DoubleArr
     val averageRegret = sumOfRewards.mapIndexed { level, reward -> (expectedMaxReward) - reward / configuration.iterations / level}
     val cumSumRegret = sumOfRewards.mapIndexed { level, reward -> (expectedMaxReward) * level - reward / configuration.iterations }
 
-    results.add(Result("UCT", probabilities, expectedMaxReward, averageRegret.last(), expectedMaxReward - averageRegret.last(), averageRegret, cumSumRegret))
+//    results.add(Result("UCT", probabilities, expectedMaxReward, averageRegret.last(), expectedMaxReward - averageRegret.last(), averageRegret, cumSumRegret))
 
     return results
 }
