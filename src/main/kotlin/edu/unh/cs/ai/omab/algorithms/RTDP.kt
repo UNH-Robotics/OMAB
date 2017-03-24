@@ -92,7 +92,7 @@ fun executeRtdp(world: Simulator, simulator: Simulator, probabilities: DoubleArr
 
         val averageRegret = sumOfRewards.mapIndexed { level, reward -> (expectedMaxReward) - reward / configuration.iterations / level}
         val cumSumRegret = sumOfRewards.mapIndexed { level, reward -> (expectedMaxReward) * level - reward / configuration.iterations }
-        results.add(Result("RTDP $rollOutCount", probabilities, expectedMaxReward, averageRegret.last(), expectedMaxReward - averageRegret.last(), averageRegret, cumSumRegret))
+//        results.add(Result("RTDP $rollOutCount", probabilities, expectedMaxReward, averageRegret.last(), expectedMaxReward - averageRegret.last(), averageRegret, cumSumRegret))
     }
 
     return results

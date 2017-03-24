@@ -271,7 +271,7 @@ class MDP(depth: Int? = null, val numberOfActions: Int) {
 
 //        println(state)
         (0..level - 1).forEach {
-            (0..currentLevel.size - 1).forEach {
+            currentLevel.indices.forEach {
                 val currentState = currentLevel[it]
                 (0..numberOfActions - 1).forEach { action ->
                     val levelReturn = ArrayList<BeliefState>()

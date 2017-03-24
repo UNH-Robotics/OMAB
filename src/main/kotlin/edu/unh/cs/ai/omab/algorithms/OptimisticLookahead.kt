@@ -12,9 +12,8 @@ import edu.unh.cs.ai.omab.utils.pow
 import org.apache.commons.math3.distribution.BetaDistribution
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import java.lang.Math.min
+import java.lang.Math.*
 import java.util.*
-import java.util.stream.IntStream
 
 /**
  * @author Bence Cserna (bence@cserna.net)
@@ -60,6 +59,7 @@ fun parseValueFunction(path: String): HashMap<StateKey, Double> {
 }
 
 data class StateKey(val steps: Int, val alpha: Int, val beta: Int)
+
 val UCB_VALUES = parseValueFunction("ucb_value.csv")
 val GITTINS_VALUES = parseValueFunction("gittins_value.csv")
 
@@ -99,7 +99,7 @@ fun gittinsValueLookahead(state: BeliefState, configuration: Configuration, rand
     return valueFunctionLookahead(state, configuration, random, GITTINS_VALUES)
 }
 
-private fun valueFunctionLookahead(state: BeliefState, configuration: Configuration, random: Random, valueFunction: HashMap<StateKey, Double> ): Int {
+private fun valueFunctionLookahead(state: BeliefState, configuration: Configuration, random: Random, valueFunction: HashMap<StateKey, Double>): Int {
     // Acquire parameters
     val lookahead = min(configuration[LOOKAHEAD] as Int, configuration.horizon)
     val discountFactor = configuration[DISCOUNT] as Double
@@ -112,7 +112,7 @@ private fun valueFunctionLookahead(state: BeliefState, configuration: Configurat
     fun lookahead(state: BeliefState, currentDepth: Int, maximumDepth: Int): Double {
         return if (currentDepth >= maximumDepth) {
             exploredStates[state] = state
-            val ucbValue = state.arms.sumByDouble { valueFunction[StateKey(state.totalSteps(), state.alphas[it], state.betas[it])]!! }
+            val ucbValue = state.arms.sumByDouble { valueFunction[StateKey(state.totalSteps(), state.alphas[it], state.betas[it])]!! * configuration.rewards[it] }
             state.utility = ucbValue
             return ucbValue * discountFactor
         } else {
@@ -255,12 +255,21 @@ private fun sampleBetaValue(state: BeliefState, betaSampleCount: Int, constraint
 }
 
 fun thompsonSampling(state: BeliefState, configuration: Configuration, random: Random): Int {
+    val constrainedProbabilities = configuration[CONSTRAINED_PROBABILITIES] as Boolean
+
     val distributions = state.betaDistributions()
 
-    val samples = distributions.mapIndexed { arm, betaDistribution ->
-        betaDistribution.sample() * configuration.rewards[arm]
+    return if (constrainedProbabilities) {
+        generateSequence { distributions.map(BetaDistribution::sample) }
+                .first { list -> list.indices.drop(1).all { list[it - 1] >= list[it] } }
+                .let { state.arms.maxBy { arm -> it[arm] * configuration.rewards[arm] }!! }
+    } else {
+        val samples = distributions.mapIndexed { arm, betaDistribution ->
+            betaDistribution.sample() * configuration.rewards[arm]
+        }
+
+        (0..samples.size - 1).maxBy { samples[it] }!!
     }
-    return (0..samples.size - 1).maxBy { samples[it] }!!
 }
 
 fun upperConfidenceBounds(state: BeliefState, configuration: Configuration, random: Random): Int {
@@ -269,31 +278,32 @@ fun upperConfidenceBounds(state: BeliefState, configuration: Configuration, rand
     }!!
 }
 
-fun evaluateStochasticAlgorithm(world: Simulator, simulator: Simulator, probabilities: DoubleArray, configuration: Configuration, algorithm: (BeliefState, Configuration, Random) -> Int, name: String): List<Result> {
+fun bayesUpperConfidenceBounds(state: BeliefState, configuration: Configuration, random: Random): Int {
+    return state.arms.maxBy {
+        val c = 0.0
+        val targetProbability = 1 - 1 / ((state.totalSteps() + 1) * pow(log(configuration.horizon.toDouble()), c))
+        BetaDistribution(state.alphas[it].toDouble(), state.betas[it].toDouble()).inverseCumulativeProbability(targetProbability)
+    }!!
+}
+
+fun evaluateStochasticAlgorithm(world: Simulator, simulator: Simulator, probabilities: Pair<Int, DoubleArray>, configuration: Configuration, algorithm: (BeliefState, Configuration, Random) -> Int, name: String): List<Result> {
     val results: MutableList<Result> = ArrayList(configuration.iterations)
 
-    val expectedMaxReward = (configuration.rewards zip probabilities).maxValueBy { it.first * it.second }!!
+    val expectedMaxReward = (configuration.rewards zip probabilities.second).maxValueBy { it.first * it.second }!!
 
     // Do multiple experiments
-    val rewardsList = IntStream.range(0, configuration.iterations).mapToObj {
-        executeStochasticAlgorithm(world, simulator, configuration, algorithm)
-    }
+    (1..configuration.iterations).forEach {
+        val rewards = executeStochasticAlgorithm(world, simulator, configuration, algorithm)
+        var sum = 0.0
 
-    val averageRewards = DoubleArray(configuration.horizon)
-    rewardsList.forEach { rewards ->
-        (0..configuration.horizon - 1).forEach {
-            averageRewards[it] = rewards[it] / configuration.iterations + averageRewards[it]
+        val cumSumRegrets = rewards.map {
+            val regret = expectedMaxReward - it
+            sum += regret
+            sum
         }
-    }
 
-    val averageRegrets = averageRewards.map { reward -> expectedMaxReward - reward }
-    var sum = 0.0
-    val cumSumRegrets = averageRegrets.map {
-        sum += it
-        sum
+        results.add(Result(name, probabilities.second, cumSumRegrets, probabilities.first, it))
     }
-
-    results.add(Result("$name", probabilities, expectedMaxReward, averageRegrets.last(), expectedMaxReward - averageRegrets.last(), averageRegrets, cumSumRegrets))
 
     return results
 }

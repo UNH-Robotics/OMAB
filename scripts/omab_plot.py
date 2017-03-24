@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 
 import json
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from pandas import DataFrame
-from scipy import stats
+
+matplotlib.rcParams['ps.useafm'] = True
+matplotlib.rcParams['pdf.use14corefonts'] = True
+# matplotlib.rcParams['text.usetex'] = True
 
 __author__ = 'Bence Cserna'
 
@@ -66,36 +70,34 @@ def list_average_cum_sum(group, key):
 
 
 def configure_sns():
-    sns.set_style("white")
-
-
-def probability_index(probabilities):
-    print(probabilities)
-    multiplier = 1
-    index = 0
-    for p in probabilities:
-        index += round(p * 100) * multiplier
-        multiplier *= 10
-    return index
+    sns.set_style("whitegrid")
+    sns.set_context("talk")
+    # sns.set_context("paper", rc={"font.size": 15, "axes.titlesize": 15, "axes.labelsize": 15})
 
 
 def expand_dataset(data, column):
     size = len(data[column].values[0])
     return DataFrame({col: np.repeat(data[col].values, data[column].str.len())
-                      for col in data.columns.difference([column])})\
-        .assign(**{column: np.concatenate(data[column].values)})\
-        .assign(step=lambda x: x.index % size)
+                      for col in data.columns.difference([column])}) \
+        .assign(**{column: np.concatenate(data[column].values)}) \
+        .assign(Timestep=lambda x: x.index % size)
 
 
 def main():
     configure_sns()
     data = DataFrame(read_data("../results/resultT.dat"))
 
-    data = data.assign(pindex=lambda df: [probability_index(probabilities) for probabilities in df.probabilities])
-    regrets_ = data[['algorithm', 'cumSumRegrets', 'pindex']]
-    expanded = expand_dataset(regrets_, 'cumSumRegrets')
-    print(expanded)
-    ax = sns.tsplot(time="step", value="cumSumRegrets", unit="pindex", condition="algorithm", data=expanded)
+    data = data.assign(experimentId=lambda df: [probability_id * 1000 + iteration for probability_id, iteration in
+                                                zip(df.probabilityId, df.iteration)])
+    data = data[['algorithm', 'cumSumRegrets', 'experimentId']]
+    data = expand_dataset(data, 'cumSumRegrets')
+
+    data.rename(columns={"cumSumRegrets": 'Bayesian Regret'}, inplace=True)
+    print(data)
+    ax = sns.tsplot(time="Timestep", value="Bayesian Regret", unit="experimentId", ci=[95], condition="algorithm",
+                    data=data)
+    sns.plt.legend(title=None, loc='upper left')
+
     sns.plt.show()
 
     # regret_plot(data)
