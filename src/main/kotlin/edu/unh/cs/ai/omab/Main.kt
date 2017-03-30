@@ -1,6 +1,8 @@
 package edu.unh.cs.ai.omab
 
-import edu.unh.cs.ai.omab.algorithms.*
+import edu.unh.cs.ai.omab.algorithms.evaluateStochasticAlgorithm
+import edu.unh.cs.ai.omab.algorithms.gittinsValueLookahead
+import edu.unh.cs.ai.omab.algorithms.ucbValueLookahead
 import edu.unh.cs.ai.omab.domain.BanditSimulator
 import edu.unh.cs.ai.omab.domain.BanditWorld
 import edu.unh.cs.ai.omab.domain.BeliefState
@@ -27,7 +29,7 @@ fun main(args: Array<String>) {
     val configuration = Configuration(
             arms = arms,
             rewards = doubleArrayOf(1.0, 1.0, 1.0),
-            horizon = 299,
+            horizon = 290,
             experimentProbabilities = generateConstrainedProbabilities(resolution = 10, count = arms),
             iterations = 20)
 
@@ -39,22 +41,26 @@ fun main(args: Array<String>) {
 
     val configuredExecutor = { name: String, algorithm: Algorithm -> executeAlgorithm(name, ::evaluateStochasticAlgorithm, algorithm, results, configuration) }
 
-    configuration[CONSTRAINED_PROBABILITIES] = false
     configuration[BETA_SAMPLE_COUNT] = 100
 
-    executeAlgorithm("Gittins", ::evaluateStochasticAlgorithm, ::gittinsIndex, results, configuration)
-    configuredExecutor("Bayes-UCB", ::bayesUpperConfidenceBounds)
-    configuredExecutor("UCB", ::upperConfidenceBounds)
-    executeAlgorithm("TS", ::evaluateStochasticAlgorithm, ::thompsonSampling, results, configuration)
+//    configuredExecutor("Gittins", ::gittinsIndex)
+//    configuredExecutor("Bayes-UCB", ::bayesUpperConfidenceBounds)
+//    configuredExecutor("UCB", ::upperConfidenceBounds)
 
-    intArrayOf(1).forEach {
+    configuration[CONSTRAINED_PROBABILITIES] = false
+//    configuredExecutor("TS", ::thompsonSampling)
+
+//    configuration[CONSTRAINED_PROBABILITIES] = true
+//    configuredExecutor("TS Constrained", ::thompsonSampling)
+
+    intArrayOf(1, 3).forEach {
         configuration[LOOKAHEAD] = it
         configuration[DISCOUNT] = 1.0
-        configuredExecutor("Gittins-Value ${if (configuration[CONSTRAINED_PROBABILITIES] as Boolean) "Constrained" else ""}", ::gittinsValueLookahead)
+        configuredExecutor("Gittins-Value ${if (configuration[CONSTRAINED_PROBABILITIES] as Boolean) "Constrained " else ""}l=${configuration[LOOKAHEAD]}", ::gittinsValueLookahead)
         configuration[DISCOUNT] = 0.4
-        configuredExecutor("UCB-Value ${if (configuration[CONSTRAINED_PROBABILITIES] as Boolean) "Constrained" else ""} - d${configuration[DISCOUNT]}", ::ucbValueLookahead)
-        configuration[DISCOUNT] = 1.0
-        configuredExecutor("UCB-Value ${if (configuration[CONSTRAINED_PROBABILITIES] as Boolean) "Constrained" else ""} - b${configuration[BETA_SAMPLE_COUNT]} d${configuration[DISCOUNT]}", ::ucbValueLookahead)
+        configuredExecutor("UCB-Value ${if (configuration[CONSTRAINED_PROBABILITIES] as Boolean) "Constrained " else ""}l=${configuration[LOOKAHEAD]} a=${configuration[DISCOUNT]}", ::ucbValueLookahead)
+//        configuration[DISCOUNT] = 1.0
+//        configuredExecutor("UCB-Value ${if (configuration[CONSTRAINED_PROBABILITIES] as Boolean) "Constrained" else ""} - b${configuration[BETA_SAMPLE_COUNT]} d${configuration[DISCOUNT]}", ::ucbValueLookahead)
     }
 
     // ------------------------------------------------------------------------

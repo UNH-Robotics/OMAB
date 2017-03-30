@@ -85,21 +85,43 @@ def expand_dataset(data, column):
 
 def main():
     configure_sns()
-    data = DataFrame(read_data("../results/resultT.dat"))
+    name = "resultT"
+
+    data = DataFrame(read_data("../results/%s.dat" % name))
 
     data = data.assign(experimentId=lambda df: [probability_id * 1000 + iteration for probability_id, iteration in
                                                 zip(df.probabilityId, df.iteration)])
     data = data[['algorithm', 'cumSumRegrets', 'experimentId']]
+
+    # data = data[data.algorithm != 'UCB-Value  - d0.4']
+    # data = data.replace({'algorithm': {'UCB-Value  - b100 d1.0': 'UCB-Value'}})
+    data = data.replace({'algorithm': {'UCB-Value  - b100 d1.0': 'UCB-Value'}})
+    data = data.replace({'algorithm': {"UCB-Value l=1 a=0.4": r'UCB-Value $\mathit{lookahead} = 1$ $\alpha = 0.4$'}})
+    data = data.replace({'algorithm': {"UCB-Value l=3 a=0.4": r'UCB-Value $\mathit{lookahead} = 3$ $\alpha = 0.4$'}})
+    data = data.replace({'algorithm': {"Gittins-Value l=1": r'Gittins-Value $\mathit{lookahead} = 1$'}})
+    data = data.replace({'algorithm': {"Gittins-Value l=3": r'Gittins-Value $\mathit{lookahead} = 3$'}})
+
+    #
     data = expand_dataset(data, 'cumSumRegrets')
 
-    data.rename(columns={"cumSumRegrets": 'Bayesian Regret'}, inplace=True)
+    data = data.rename(columns={"cumSumRegrets": 'Bayesian Regret'})
     print(data)
     ax = sns.tsplot(time="Timestep", value="Bayesian Regret", unit="experimentId", ci=[95], condition="algorithm",
                     data=data)
+    # ax = sns.tsplot(time="Timestep", value="Bayesian Regret", unit="experimentId", ci=[95], condition="algorithm",
+    #                 data=data[data.algorithm == 'Gittins'], linestyle='--')
+
+    # ax2 = sns.tsplot(time="Timestep", value="Bayesian Regret", unit="experimentId", ci=[95], condition="algorithm",
+    #                 data=data[data.algorithm != 'Gittins'], linestyle='-')
+    print(ax.lines)
+    print(ax.lines[0])
     sns.plt.legend(title=None, loc='upper left')
 
-    sns.plt.show()
+    # sns.plt.savefig('../results/%s-regret.pdf' % name)
+    # sns.plt.savefig('../results/%s-regret.eps' % name)
+    # sns.plt.savefig('../results/%s-regret.png' % name)
 
+    sns.plt.show()
     # regret_plot(data)
 
 
