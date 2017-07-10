@@ -3,12 +3,15 @@ Generate plots of value functions constructed based on UCB and Gittins index
 """
 
 import numpy as np
+import matplotlib
+import pandas as pa
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 matplotlib.rcParams['ps.useafm'] = True
 matplotlib.rcParams['pdf.use14corefonts'] = True
 matplotlib.rcParams['text.usetex'] = True
+matplotlib.rcParams.update({'font.size': 12})
 
 
 ## Load Data
@@ -41,14 +44,12 @@ def plot_value(tlevel, valuefunction, name):
     V = np.array(V)    
     X,Y = np.meshgrid(prob_points,ncounts)
     
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    
-    
-    ax.plot_surface(X,Y-2,V)
-    plt.xlabel("Expected Arm Success Probability ($\\frac{\\alpha}{\\alpha+\\beta}$)")
-    plt.ylabel("Number of Arm Pulls ($\\alpha + \\beta - 2$)")
-    ax.set_zlabel("Value Function: $\\upsilon^a_{" + str(tlevel) + "}$")
+    fig = plt.figure(num=2, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
+    ax = fig.add_subplot(111) #, projection='3d')
+    ax.contour(X,Y-2,V)
+    plt.xlabel("Expected Arm $a$ Success Probability ($\\frac{\\alpha}{\\alpha+\\beta}$)")
+    plt.ylabel("Number of Arm $a$ Pulls ($\\alpha + \\beta - 2$)")
+    #ax.set_zlabel("Value Function: $\\upsilon^a_{" + str(tlevel) + "}$")
     plt.title(name + " $t=" + str(tlevel) + "$")
     plt.savefig("valuefunction_" + name + "_t" + str(tlevel) + ".pdf")
     plt.show()
